@@ -6,7 +6,7 @@
   <version>1.0-SNAPSHOT</version>
   <packaging>war</packaging>
   <name>pndmanager</name>
-  <inceptionYear>2007</inceptionYear>
+  <inceptionYear>2009</inceptionYear>
   <properties>
     <scala.version>2.7.4</scala.version>
     <netbeans.hint.deploy.server>J2EE</netbeans.hint.deploy.server>
