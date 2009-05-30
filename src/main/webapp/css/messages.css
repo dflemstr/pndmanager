@@ -1,0 +1,40 @@
+/*
+ * Styles for the messaging system
+ */
+.error, .note, .warning {
+    border: 1px solid;
+    padding: 1em;
+    margin: 0;
+    padding: .1em .5em .15em;
+    display: none;
+}
+
+.error ul, .note ul, .warning ul {
+    margin: 0;
+    display: inline;
+    list-style: outside none;
+}
+
+.error li, .note li, .warning li {
+    margin: 0;
+    display: block;
+    padding: 0 0 0 1.3em;
+}
+
+.error {
+    color: #a30000 !important;
+    border-color: red !important;
+    background-color: #fcc !important;
+}
+
+.note {
+    color: #33a333 !important;
+    border-color: #8d8 !important;
+    background-color: #cfc !important;
+}
+
+.warning {
+    color: #660 !important;
+    border-color: yellow !important;
+    background-color: #ffc !important;
+}

@@ -1,0 +1,49 @@
+
+.boxed {
+    border: 1px solid #ccc;
+    padding: 3px;
+}
+
+.sidebar ul {
+    margin: 0;
+    padding: 0;
+    border-bottom: 1px solid #ccc;
+}
+
+.menuitem ul, .selectedmenu ul {
+    margin-left: 20px;
+    border-bottom: none;
+}
+
+.menuitem ul li, .selectedmenu ul li {
+    border: none;
+}
+
+.menuitem, .selectedmenu {
+    margin: 0;
+    padding: 0;
+    border-bottom: none;
+    list-style: none;
+}
+
+.menuitem a {
+    display: block;
+    padding: 1px;
+    padding-left: 10px;
+    text-decoration: none;
+}
+
+.selectedmenu span {
+    display: block;
+    padding: 1px;
+    padding-left: 20px;
+    text-decoration: none;
+}
+
+.menuitem a:hover {
+    background-color: #eee;
+}
+
+.witharrow {
+   background: url(/images/menu.gif) 8px 0.5em no-repeat;
+}

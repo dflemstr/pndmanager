@@ -1,0 +1,14 @@
+# GIT ignore information
+
+# Ignore file backups
+*~
+
+# Ignore compiled and generated stuff
+target/*
+
+# Ignore runtime data + database information
+pndmanager/*
+
+# Ignore Derby server log information
+derby.log
+

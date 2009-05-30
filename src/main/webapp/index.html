@@ -1,0 +1,26 @@
+<lift:surround with="default" at="content">
+    <div>
+        Welcome, <em><lift:CurrentUser.name/></em>, to the online PND package manager!
+    </div>
+    <div>
+        Here, you can browse and download PND packages published by
+        other users for your <a href="http://openpandora.org/">OpenPandora</a> system!
+    </div>
+    <lift:CurrentUser.offline>
+        <div>
+            The manager only allows the editing of packages for logged-in
+            users. Please <lift:menu.item name="Login">log in</lift:menu.item>
+            to make your session interactive.
+        </div>
+    </lift:CurrentUser.offline>
+    <div>
+        To browse
+        <lift:CurrentUser.online>and contribute to</lift:CurrentUser.online>
+        the PND repository, look in the menu to the left.
+    </div>
+    <hr class="space"/>
+    <h3>Debug tests:</h3>
+    <lift:Test.ajax/>
+    <lift:Test.dbDump/>
+</lift:surround>
+

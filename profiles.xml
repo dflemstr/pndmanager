@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<profilesXml>
+    <profiles>
+        <profile>
+	    <id>netbeans-private</id>
+	    <!-- Netbeans Glassfish v2 configuration -->
+            <activation>
+                <property>
+                    <name>netbeans.execution</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <properties>
+                <netbeans.deployment.server.id>[/usr/local/glassfish-v2.1]deployer:Sun:AppServer::localhost:11811</netbeans.deployment.server.id>
+            </properties>
+        </profile>
+    </profiles>
+</profilesXml>
