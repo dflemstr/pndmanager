@@ -4,46 +4,99 @@ import scala.xml.Text
 import net.liftweb._
 import mapper._
 import http._
+import js._
+import JsCmds._
 import SHtml._
 import util._
+import Helpers._
+import net.liftweb.openid._
+import scala.xml._
 
-object User extends User with MetaMegaProtoUser[User] {
+import _root_.org.openid4java.discovery.Identifier
+import _root_.org.openid4java.consumer._
+
+object User extends User with MetaOpenIDProtoUser[User] {
   override def dbTableName = "users"
+  def openIDVendor = SimpleOpenIdVendor
   override val basePath: List[String] = "user" :: Nil
-  override def fieldOrder = super.fieldOrder + username + superUser
-  override def signupFields = username :: email :: locale :: timezone :: password :: Nil
   
   override def screenWrap = Full(
     <lift:surround with="default" at="content">
         <lift:bind />
     </lift:surround>)
 
-  override def emailDisplayName = S.??("Email address")
+  override def loginXhtml =
+  <form method="post" action={S.uri}>
+    <table>
+      <tr>
+        <td>{S.?("your")} <lift:OpenID.link>OpenID</lift:OpenID.link>:</td>
+        <td><user:openid /></td>
+      </tr>
+      <tr>
+        <td>&nbsp;</td>
+        <td>{S.?("openid.name.explanation")}</td>
+      </tr>
+      <tr>
+        <td>&nbsp;</td><td><user:submit /></td>
+      </tr>
+    </table>
+  </form>
 
-  override def niceName: String = (username.is, firstName.is, lastName.is) match {
-    case (_, f, l) if f.length > 1 && l.length > 1 => f+" "+l
-    case (u, _, _) => u
+  override def editXhtml(user: User) =
+  <form method="post" action={S.uri}>
+     <table>
+       {localForm(user, true)}
+       <tr><td> </td><td><user:submit/></td></tr>
+     </table>
+  </form>
+
+  override def login = {
+    if (S.post_?) {
+      S.param("username").
+      foreach(username =>
+              openIDVendor.loginAndRedirect(username, performLogUserIn)
+      )
+    }
+    def performLogUserIn(openid: Box[Identifier],
+                                  fo: Box[VerificationResult],
+                                  exp: Box[Exception]): LiftResponse = {
+      (openid, exp) match {
+        case (Full(id), _) =>
+          val user = this.findOrCreate(id.getIdentifier)
+          logUserIn(user)
+          S.notice(S.?("welcome.user").replace("%user%", user.niceName))
+        case (_, Full(exp)) =>
+          S.error(S.?("report.exception").replace("%exception%", exp.getMessage))
+        case _ =>
+          S.error(S.?("report.loginreason").replace("%reason%", fo.toString))
+      }
+      RedirectResponse("/")
+    }
+
+    Helpers.bind("user", loginXhtml,
+                 "openid" -> (FocusOnLoad(<input type="text" name="username"/>)),
+                 "submit" -> (<input type="submit" value={S.??("log.in")}/>))
   }
 
-  override def shortName: String = username.is
+  protected def localForm(user: User, ignorePassword: Boolean): NodeSeq = {
+    signupFields.
+    map(fi => getSingleton.getActualBaseField(user, fi)).
+    filter(f => !ignorePassword || (f match {
+          case f: MappedPassword[User] => false
+          case _ => true
+        })).
+    flatMap(f =>
+      f.toForm.toList.map(form => //hack the nickname until it is translatable for real upstream
+        (<tr>
+            <td>{if(f.displayName == "nickname") S.?("nickname") else f.displayName}</td>
+            <td>{form}</td>
+         </tr>) ) )
+  }
 
-  override def skipEmailValidation = true //TODO: change this when we have mail access
+  override def findByNickname(str: String): List[User] =
+    findAll(By(nickname, str))
 }
 
-class User extends MegaProtoUser[User] {
+class User extends OpenIDProtoUser[User] {
   def getSingleton = User
-
-  object username extends MappedString(this, 64) {
-    override def validations = isNameValid _ :: isUnique _ :: super.validations
-
-    override def displayName = S.??("Username")
-
-    def isNameValid(name: String) =
-      if(name matches """\w+""") Nil
-      else List(FieldError(this, Text(S.??("Invalid username; only letters and numbers allowed."))))
-
-    def isUnique(name: String) =
-      if(User.find(name).isEmpty) Nil
-      else List(FieldError(this, Text(S.??("Already taken."))))
-  }
 }

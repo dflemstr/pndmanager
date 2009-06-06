@@ -1,4 +1,14 @@
 
+p {
+    text-indent: 0 !important; /* override built-in CSS */
+    margin-top: 1.5em !important;
+}
+
+.openid-url {
+    padding-left: 16px;
+    background: transparent url(../images/openid-icon.png) no-repeat center left;
+}
+
 .boxed {
     border: 1px solid #ccc;
     padding: 3px;
@@ -45,5 +55,5 @@
 }
 
 .witharrow {
-   background: url(/images/menu.gif) 8px 0.5em no-repeat;
+   background: url(../images/menu.gif) 8px 0.2em no-repeat;
 }

@@ -2,7 +2,7 @@ package bootstrap.liftweb
 
 import _root_.net.liftweb.util._
 import _root_.net.liftweb.http._
-import net.liftweb.http.js.{JsCmds,JE}
+import _root_.net.liftweb.http.js.{JsCmds,JE}
 import _root_.net.liftweb.sitemap._
 import _root_.net.liftweb.sitemap.Loc._
 import Helpers._
@@ -10,6 +10,7 @@ import _root_.net.liftweb.mapper.{DB, ConnectionManager, Schemifier, DefaultConn
 import _root_.java.sql.{Connection, DriverManager}
 import _root_.se.dflemstr.pndmanager.model._
 import _root_.javax.servlet.http.{HttpServletRequest}
+import _root_.net.liftweb.openid.SimpleOpenIdVendor
 
 /**
   * A class that's instantiated early and run.  It allows the application
@@ -37,6 +38,12 @@ class Boot {
 
     //Convert page to UTF-8
     LiftRules.early.append(makeUtf8)
+
+    //Load localization data
+    LiftRules.resourceNames = "pndmanager" :: LiftRules.resourceNames
+
+    //OpenID support
+    LiftRules.dispatch.append(SimpleOpenIdVendor.dispatchPF)
 
     S.addAround(DB.buildLoanWrapper)
   }
