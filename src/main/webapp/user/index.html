@@ -1,0 +1,25 @@
+<lift:surround with="default" at="content">
+    <lift:CurrentUser.online>
+        <p>
+            You are currently logged in as <lift:CurrentUser.name/>
+        </p>
+        <h2>User Statistics</h2>
+        <table id="userprops">
+            <thead><tr>
+                <th>Property</th>
+                <th>Value</th>
+            </tr></thead>
+            <tbody>
+                <tr>
+                    <td>Number of owned packages</td>
+                    <td><lift:CurrentUser.numberOfOwnedPackages/></td>
+                </tr>
+            </tbody>
+        </table>
+    </lift:CurrentUser.online>
+    <lift:CurrentUser.offline>
+        <p>
+            You are currently not logged in.
+        </p>
+    </lift:CurrentUser.offline>
+</lift:surround>

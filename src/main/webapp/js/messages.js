@@ -4,8 +4,8 @@
 
 $(document).ready(function() {
     $(".note, .error, .warning").slideDown("slow");
-});
 
-$(".note, .error, .warning").click(function() {
-    $(this).slideUp("slow");
+    $(".note, .error, .warning").click(function() {
+        $(this).slideUp("slow");
+    });
 });

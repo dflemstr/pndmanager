@@ -1,0 +1,22 @@
+<lift:surround with="default" at="content">
+    <lift:Packages.addForm form="POST" multipart="true">
+        <table id="package-form-add" class="packageform add">
+            <thead>
+                <tr><th>Name</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+                <form:entry>
+                    <tr>
+                        <td><entry:name/></td><td><entry:form/></td>
+                    </tr>
+                </form:entry>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td><form:submit>Add package</form:submit></td>
+                </tr>
+            </tfoot>
+        </table>
+    </lift:Packages.addForm>
+</lift:surround>

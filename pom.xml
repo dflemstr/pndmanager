@@ -8,7 +8,7 @@
   <name>pndmanager</name>
   <inceptionYear>2009</inceptionYear>
   <properties>
-    <scala.version>2.7.4</scala.version>
+    <scala.version>2.7.5</scala.version>
     <lift.version>1.1-M1</lift.version>
     <netbeans.hint.deploy.server>J2EE</netbeans.hint.deploy.server>
   </properties>

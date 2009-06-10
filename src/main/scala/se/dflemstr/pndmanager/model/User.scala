@@ -86,7 +86,7 @@ object User extends User with MetaOpenIDProtoUser[User] {
           case _ => true
         })).
     flatMap(f =>
-      f.toForm.toList.map(form => //hack the nickname until it is translatable for real upstream
+      f.toForm.toList.map(form => //hack the nickname until it is translatable "for real", upstream
         (<tr>
             <td>{if(f.displayName == "nickname") S.?("nickname") else f.displayName}</td>
             <td>{form}</td>
@@ -99,4 +99,6 @@ object User extends User with MetaOpenIDProtoUser[User] {
 
 class User extends OpenIDProtoUser[User] {
   def getSingleton = User
+
+  def ownedPackages = Package.findAll(By(Package.owner, this))
 }

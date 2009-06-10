@@ -9,9 +9,12 @@ import SHtml._
 import util._
 
 object Category extends Category with LongKeyedMetaMapper[Category] {
-  
+  override def dbTableName = "categories"
 }
 
 class Category extends LongKeyedMapper[Category] with IdPK {
- def getSingleton = Category
+  def getSingleton = Category
+  object name extends MappedString(this, 32)
+
+  object description extends MappedString(this, 1024)
 }

@@ -1,7 +1,10 @@
 <lift:surround with="default" at="content">
-    <lift:CurrentUser.checkIfNameUnchanged/>
+    <lift:CurrentUser.checkIfNameUnchanged>
+        Your nickname is currently unchanged. Please go to the
+        <lift:menu.item name="EditUser">edit user</lift:menu.item> page to change it.
+    </lift:CurrentUser.checkIfNameUnchanged>
     <p>
-        Welcome, <em><lift:CurrentUser.name/></em>, to the online PND package manager!<br/>
+        Welcome to the online PND package manager!<br/>
         Here, you can browse and download PND packages published by
         other users for your <a href="http://openpandora.org/">OpenPandora</a> system!
     </p>
@@ -30,5 +33,6 @@
     <h3>Debug tests:</h3>
     <lift:Test.ajax/>
     <lift:Test.dbDump/>
+    <lift:Test.deleteAllPackages/>
 </lift:surround>
 
