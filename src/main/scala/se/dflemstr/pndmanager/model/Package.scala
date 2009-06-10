@@ -2,6 +2,7 @@ package se.dflemstr.pndmanager.model
 
 import java.util.Date
 import java.text.DateFormat
+import scala.io.Source
 import _root_.java.lang.reflect.Method
 import scala.xml._
 import net.liftweb._
@@ -24,6 +25,27 @@ object Package extends Package with LongKeyedMetaMapper[Package] with LongCRUDif
   override def createMenuLoc = Full(Menu(Loc("Create package", createPath,
     createMenuName, locSnippets, Loc.Template(createTemplate), userLoggedInCondition)))
 
+  override def _createTemplate =
+   <lift:crud.create form="post" multipart="true">
+      <table id={createId} class={createClass}>
+        <crud:field>
+          <tr>
+            <td>
+              <crud:name/>
+            </td>
+            <td>
+              <crud:form/>
+            </td>
+          </tr>
+        </crud:field>
+
+        <tr>
+          <td> </td>
+          <td><crud:submit>{createButton}</crud:submit></td>
+        </tr>
+      </table>
+   </lift:crud.create>
+
   //A condition for menus that requires a user to be logged in; otherwise it redirects the visitor to the log in page
   protected def userLoggedInCondition = If(User.loggedIn_? _, () => RedirectResponse(User.loginPageURL))
 
@@ -41,15 +63,23 @@ object Package extends Package with LongKeyedMetaMapper[Package] with LongCRUDif
         flatMapEditable(item, (title, _, form) =>
           bind("crud", html, "name" -> title, "form" -> form))
 
-      def doSubmit() = item.validate match {
-        case Nil =>
-          S.notice(noticeMsg)
-          item.save
-          S.redirectTo(from)
-
-        case xs =>
-          S.error(xs)
+      def ifOK(validee: {def validate: List[FieldError]})(action: => Unit) = validee.validate match {
+        case Nil => action
+        case error =>
+          S.error(error)
           snipName.foreach(S.mapSnippet(_, loop))
+      }
+
+      def doSubmit() = {
+        ifOK(item.pndFile) { //first validate the file
+          item.populateFieldsFromPND() //then load things from the file
+
+          ifOK(item) { //then check all fields
+            S.notice(noticeMsg)
+            item.save //and save the entry
+            S.redirectTo(from)
+          }
+        }
       }
 
       bind("crud", html,
@@ -67,11 +97,11 @@ trait NonEditable //Just a simple tagging trait that hides a field from editing
 class Package extends LongKeyedMapper[Package] with IdPK {
   def getSingleton = Package
 
-  def downloadLoc = Loc("package" + name.is, List("package", name.is), "Download package")
+  def downloadLoc = Loc("package" + name.is, List("package", name.is), "Download")
 
   //A validation for MappedFields for checking if a date is in the future
   private def notInFuture(field: MappedDateTime[Package])(date: Date) = 
-    List(FieldError(field, Text(S.?("future.package")))).filter(_ => date.getTime <= System.currentTimeMillis)
+    List(FieldError(field, Text(S.?("future.package")))).filter(_ => date.getTime >= System.currentTimeMillis)
 
   //Converts a date to HTML, automatically using the logged-in user's preferences
   private def dateAsHtml(date: Date) = {
@@ -84,6 +114,33 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     formatter.setTimeZone(timezone)
 
     scala.xml.Text(formatter.format(date))
+  }
+
+  def getPXMLFromPND(pnd: Array[Byte]) = { //TODO: maybe improve this?
+    val startPattern =  "<PXML".getBytes.projection
+    val endPattern = "</PXML>"
+    val window = 32 * 1024; //32k ought to be enough for anybody
+
+    def findEnd(pxml: String): String =
+      pxml.split(endPattern)(0) + endPattern
+
+    def searchFrom(pos: Int): String = {
+      val candidate = pnd.projection.drop(pos)
+      
+      if(pos < (pnd.length - window))
+        "" //Silently die if we don't find anything
+      else if (candidate startsWith startPattern)
+        new String(candidate)
+      else
+        searchFrom(pos - 1) //tail recursive; wont create stack frames
+    }
+    findEnd(searchFrom(pnd.length - (startPattern.length + 1)))
+  }
+
+  def populateFieldsFromPND() = if(pndFile.dirty_?) {
+    val pxml = XML.loadString(getPXMLFromPND(pndFile.is))
+    name((pxml \ "@id").text) //load name from the ID attribute
+    description((pxml \ "description").text)
   }
 
   //The package owner/maintainer; NOT the author!
@@ -125,32 +182,29 @@ class Package extends LongKeyedMapper[Package] with IdPK {
 
   object pndFile extends MappedBinary(this) with LifecycleCallbacks {
     def storeTheFile(file: FileParamHolder) = {
-      println(file.file)
-      this(file.file)
-    }
-
-    def autofillSiblingFields() = {
-      
-    }
-
-    override def beforeValidationOnUpdate {
-      validate //This does nothing anyways
-      autofillSiblingFields()
+      set(file.file)
+      Log.info("File loaded: " + is)
     }
 
     override def displayName = S.?("pnd.file")
 
-    override def _toForm = Full(SHtml.fileUpload(storeTheFile _))
+    override def _toForm = Full(SHtml.fileUpload(storeTheFile))
     override def asHtml = <a href={downloadLoc.createLink(NullLocParams)}>{downloadLoc.linkText openOr "Download"}</a>
   }
 
-  object name extends MappedString(this, 64) with NonEditable  with LifecycleCallbacks {
+  object name extends MappedString(this, 64) with NonEditable {
     override def displayName = S.?("name")
-    /*override def validations = onlyAlphaNum _ :: super.validations*/
+    override def validations = onlyAlphaNum _ :: super.validations
 
     override def dbIndexed_? = true
 
-    def onlyAlphaNum(name: String) =
-      List(FieldError(this, Text(S.?("invalid.pkgn.only.alphanum")))) filter (_ => name matches "[-_a-z0-9]+")
+    def onlyAlphaNum(name: String) = 
+      List(FieldError(this, 
+                      Text(S.?("invalid.pkgn.only.alphanum") + ": \"" + name + "\""))
+      ) filter (_ => !(name matches "[-_a-z0-9\\.]+"))
+  }
+
+  object description extends MappedString(this, 2048) with NonEditable {
+    override def displayName = S.?("descr")
   }
 }
