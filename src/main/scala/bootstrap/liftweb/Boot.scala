@@ -24,6 +24,8 @@ class Boot {
     initDB()
     schemifyMappers()
 
+    localize()
+
     buildSiteMap()
 
     initAjax()
@@ -41,12 +43,16 @@ class Boot {
     S.addAround(DB.buildLoanWrapper)
   }
 
-  private def schemifyMappers() = {
+  private def schemifyMappers() =
     Schemifier.schemify(true, Log.infoF _, User, Package, Category)
+
+  private def localize() = {
+    LiftRules.localeCalculator = r => User.currentUser.map(_.locale.isAsLocale) openOr LiftRules.defaultLocaleCalculator(r)
+    LiftRules.timeZoneCalculator = r => User.currentUser.map(_.timezone.isAsTimeZone) openOr LiftRules.defaultTimeZoneCalculator(r)
   }
   
   private def buildSiteMap() = {
-    val userMenu = Menu(Loc("userInfo", List("user", "index"), "Account"), User.sitemap: _*)
+    val userMenu = Menu(Loc("userInfo", List("user", "index"), "User"), User.sitemap: _*)
     val packageMenu = Menu(Loc("packageInfo", List("packages", "index"), "Packages"), Package.menus: _*)
     val entries = Menu(Loc("home", List("index"), "Home")) ::
       packageMenu :: userMenu :: Nil

@@ -7,13 +7,14 @@ import _root_.net.liftweb.util._
 import Helpers._
 import _root_.net.liftweb.mapper._
 import _root_.scala.xml._
+import _root_.java.util.Locale
 
 class CurrentUser {
   def online(html: NodeSeq): NodeSeq = if(User.loggedIn_?) html else NodeSeq.Empty
 
   def offline(html: NodeSeq): NodeSeq = if(!User.loggedIn_?) html else NodeSeq.Empty
 
-  def name(html: NodeSeq): NodeSeq = Text(User.currentUser
+  def name: NodeSeq = Text(User.currentUser
          .map(_.niceName) openOr S.?("anonymous"))
 
   def checkIfNameUnchanged(html: NodeSeq): NodeSeq = {

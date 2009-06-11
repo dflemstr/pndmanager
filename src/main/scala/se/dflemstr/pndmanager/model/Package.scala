@@ -15,7 +15,7 @@ import util._
 import Helpers._
 
 object Package extends Package with LongKeyedMetaMapper[Package] with LongCRUDify[Package] {
-  override def fieldOrder = List(name, owner, createdOn, pndFile/*, updatedOn*/)
+  override def fieldOrder = List(name, owner, createdOn, pndFile)
   override def dbTableName = "packages"
 
   //Give the menu a more suitable name
@@ -49,6 +49,30 @@ object Package extends Package with LongKeyedMetaMapper[Package] with LongCRUDif
   //A condition for menus that requires a user to be logged in; otherwise it redirects the visitor to the log in page
   protected def userLoggedInCondition = If(User.loggedIn_? _, () => RedirectResponse(User.loginPageURL))
 
+  def getPXMLFromPND(pnd: Array[Byte]): NodeSeq = try {
+    val reversed = pnd.projection.reverse //don't actually create new arrays here, just use a projection
+    val reversedStartPattern = "<PXML".getBytes.reverse
+    val endString = "</PXML>"
+
+    def cutEnd(pxml: String): String = {
+      val parts = pxml.split(endString)
+      
+      if(parts.length >= 2 || (pxml endsWith "</PXML>"))
+        parts(0) + endString
+      else error("Could not find end of PXML file")
+    }
+
+    //yeah, yeah, this is more CPU intensive than it has to be... I don't care, it's concise
+    val candidates = for {
+      i <- 0 until Math.min(reversed.length, 32 * 1024).toInt //scan max 32 kb backwards
+      candidate = reversed take i
+      if(candidate endsWith reversedStartPattern)
+    } yield candidate
+
+    val uncutPXML = new String(candidates.last.reverse)
+    XML.loadString(cutEnd(uncutPXML))
+  } catch { case _ => NodeSeq.Empty }
+
   override def crudDoForm(item: Package, noticeMsg: String)(in: NodeSeq): NodeSeq = {
     val from = referer
     val snipName = S.currentSnippet
@@ -56,7 +80,7 @@ object Package extends Package with LongKeyedMetaMapper[Package] with LongCRUDif
     def loop(html:NodeSeq): NodeSeq = {  
       def flatMapEditable[T](toMap: Package, func: (NodeSeq, Box[NodeSeq], NodeSeq) => Seq[T]): List[T] =
         formFields(toMap)
-          .filter(! _.isInstanceOf[NonEditable])
+          .filter(! _.isInstanceOf[NonEditable]) //only allow editable fields
           .flatMap(field => field.toForm.toList.flatMap(fo => func(field.displayHtml, field.fieldId, fo)))
 
       def doFields(html: NodeSeq): NodeSeq =
@@ -72,9 +96,11 @@ object Package extends Package with LongKeyedMetaMapper[Package] with LongCRUDif
 
       def doSubmit() = {
         ifOK(item.pndFile) { //first validate the file
+          item.createdOn(new Date)
+          item.owner(User.currentUser)
           item.populateFieldsFromPND() //then load things from the file
 
-          ifOK(item) { //then check all fields
+          ifOK(item) { //then check all other fields
             S.notice(noticeMsg)
             item.save //and save the entry
             S.redirectTo(from)
@@ -93,11 +119,14 @@ object Package extends Package with LongKeyedMetaMapper[Package] with LongCRUDif
 }
 
 trait NonEditable //Just a simple tagging trait that hides a field from editing
+trait NotVisibleInSummary
 
 class Package extends LongKeyedMapper[Package] with IdPK {
+  import Package.getPXMLFromPND
+  
   def getSingleton = Package
 
-  def downloadLoc = Loc("package" + name.is, List("package", name.is), "Download")
+  def downloadLoc = Loc("package-" + name.is, List("package", name.is), "Download")
 
   //A validation for MappedFields for checking if a date is in the future
   private def notInFuture(field: MappedDateTime[Package])(date: Date) = 
@@ -105,86 +134,36 @@ class Package extends LongKeyedMapper[Package] with IdPK {
 
   //Converts a date to HTML, automatically using the logged-in user's preferences
   private def dateAsHtml(date: Date) = {
-    val (timezone, locale) = if(User.loggedIn_?) {
-      val user = User.currentUser.open_!
-      (user.timezone.isAsTimeZone, user.locale.isAsLocale)
-    } else (java.util.TimeZone.getDefault, java.util.Locale.getDefault)
-
-    val formatter = DateFormat.getDateInstance(DateFormat.MEDIUM, locale)
-    formatter.setTimeZone(timezone)
+    val formatter = DateFormat.getDateInstance(DateFormat.LONG, S.locale)
+    formatter.setTimeZone(S.timeZone)
 
     scala.xml.Text(formatter.format(date))
   }
 
-  def getPXMLFromPND(pnd: Array[Byte]) = { //TODO: maybe improve this?
-    val startPattern =  "<PXML".getBytes.projection
-    val endPattern = "</PXML>"
-    val window = 32 * 1024; //32k ought to be enough for anybody
-
-    def findEnd(pxml: String): String =
-      pxml.split(endPattern)(0) + endPattern
-
-    def searchFrom(pos: Int): String = {
-      val candidate = pnd.projection.drop(pos)
-      
-      if(pos < (pnd.length - window))
-        "" //Silently die if we don't find anything
-      else if (candidate startsWith startPattern)
-        new String(candidate)
-      else
-        searchFrom(pos - 1) //tail recursive; wont create stack frames
-    }
-    findEnd(searchFrom(pnd.length - (startPattern.length + 1)))
-  }
-
   def populateFieldsFromPND() = if(pndFile.dirty_?) {
-    val pxml = XML.loadString(getPXMLFromPND(pndFile.is))
+    val pxml = getPXMLFromPND(pndFile.is)
     name((pxml \ "@id").text) //load name from the ID attribute
     description((pxml \ "description").text)
   }
 
   //The package owner/maintainer; NOT the author!
-  object owner extends MappedLongForeignKey(this, User) with LifecycleCallbacks with NonEditable {
+  object owner extends MappedLongForeignKey(this, User) with NonEditable {
     override def displayName = S.?("owner")
-
-    override def beforeValidationOnCreate = { this(User.currentUser); super.beforeCreate }
 
     override def asHtml = Text(User.findByKey(is).open_!.nickname)
   }
 
-  object createdOn extends MappedDateTime(this) with LifecycleCallbacks with NonEditable {
+  object createdOn extends MappedDateTime(this) with NonEditable {
     override def displayName = S.?("created")
-
-    override def beforeValidationOnCreate = {
-      this(new Date)
-      super.beforeValidationOnCreate
-    }
 
     override def validations = super.validations ::: List(notInFuture(this) _)
 
     override def asHtml = dateAsHtml(is)
   }
 
-  /*object updatedOn extends MappedDateTime(this) with LifecycleCallbacks with NonEditable {
-    override def displayName = S.?("updated")
-
-    override def beforeValidationOnCreate = { 
-      this(new Date);
-      super.beforeCreate
-    }
-
-    override def afterUpdate = { beforeValidationOnCreate; super.beforeUpdate }
-
-    override def validations = super.validations ::: List(notInFuture(this) _)
-
-    override def asHtml = dateAsHtml(is)
-  }*/
-
   object pndFile extends MappedBinary(this) with LifecycleCallbacks {
-    def storeTheFile(file: FileParamHolder) = {
-      set(file.file)
-      Log.info("File loaded: " + is)
-    }
+    def storeTheFile(file: FileParamHolder) =
+      this(file.file)
 
     override def displayName = S.?("pnd.file")
 
@@ -204,7 +183,8 @@ class Package extends LongKeyedMapper[Package] with IdPK {
       ) filter (_ => !(name matches "[-_a-z0-9\\.]+"))
   }
 
-  object description extends MappedString(this, 2048) with NonEditable {
+  object description extends MappedString(this, 2048)
+      with NonEditable with NotVisibleInSummary {
     override def displayName = S.?("descr")
   }
 }
