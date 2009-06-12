@@ -46,9 +46,9 @@
       <version>${lift.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.derby</groupId>
-      <artifactId>derby</artifactId>
-      <version>10.4.2.0</version>
+      <groupId>com.h2database</groupId>
+      <artifactId>h2</artifactId>
+      <version>1.0.79</version>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
