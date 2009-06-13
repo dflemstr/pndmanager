@@ -12,3 +12,7 @@ pndmanager/*
 # Ignore Derby server log information
 derby.log
 
+# Ignore Eclipse project files
+.classpath
+.project
+

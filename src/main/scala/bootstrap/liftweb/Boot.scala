@@ -44,7 +44,8 @@ class Boot {
   }
 
   private def schemifyMappers() =
-    Schemifier.schemify(true, Log.infoF _, User, Package, Category)
+    Schemifier.schemify(true, Log.infoF _, User, Package, Category,
+                        LocalizedPackageDescription, LocalizedPackageTitle)
 
   private def localize() = {
     LiftRules.localeCalculator = r => User.currentUser.map(_.locale.isAsLocale) openOr LiftRules.defaultLocaleCalculator(r)
