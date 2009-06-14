@@ -1,0 +1,28 @@
+<lift:surround with="default" at="content">
+    <p>
+        This page lists your current user settings. 
+        Everything here can be changed to your liking.
+    </p>
+    <p>
+        Note that the Locale setting changes the language of the page 
+        (if the specified locale is available).
+    </p>
+    <lift:User.editForm form="POST" action="edit">
+        <table>
+            <tbody>
+                <user:field>
+                    <tr>
+                        <td><field:name/></td>
+                        <td><field:form/></td>
+                    </tr>
+                </user:field>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td>&nbsp;</td>
+                    <td><user:submit/></td>
+                </tr>
+            </tfoot>
+        </table>
+    </lift:User.editForm>
+</lift:surround>

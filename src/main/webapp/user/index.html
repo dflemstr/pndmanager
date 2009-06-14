@@ -1,7 +1,7 @@
 <lift:surround with="default" at="content">
-    <lift:CurrentUser.online>
+    <lift:User.online>
         <p>
-            You are currently logged in as <lift:CurrentUser.name/>
+            You are currently logged in as <lift:User.name/>
         </p>
         <h2>User Statistics</h2>
         <table id="userprops">
@@ -12,14 +12,14 @@
             <tbody>
                 <tr>
                     <td>Number of owned packages</td>
-                    <td><lift:CurrentUser.numberOfOwnedPackages/></td>
+                    <td><lift:User.numberOfOwnedPackages/></td>
                 </tr>
             </tbody>
         </table>
-    </lift:CurrentUser.online>
-    <lift:CurrentUser.offline>
+    </lift:User.online>
+    <lift:User.offline>
         <p>
             You are currently not logged in.
         </p>
-    </lift:CurrentUser.offline>
+    </lift:User.offline>
 </lift:surround>

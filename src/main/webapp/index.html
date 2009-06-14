@@ -1,14 +1,14 @@
 <lift:surround with="default" at="content">
-    <lift:CurrentUser.checkIfNameUnchanged>
+    <lift:User.checkIfNameUnchanged>
         Your nickname is currently unchanged. Please go to the
         <lift:menu.item name="EditUser">edit user</lift:menu.item> page to change it.
-    </lift:CurrentUser.checkIfNameUnchanged>
+    </lift:User.checkIfNameUnchanged>
     <p>
         Welcome to the online PND package manager!<br/>
         Here, you can browse and download PND packages published by
         other users for your <a href="http://openpandora.org/">OpenPandora</a> system!
     </p>
-    <lift:CurrentUser.offline>
+    <lift:User.offline>
         <p>
             The manager only allows the editing of packages for logged-in
             users. Please <lift:menu.item name="Login">log in</lift:menu.item>
@@ -23,11 +23,10 @@
             (get more information <a href="http://openid.net/get/">here</a>); otherwise,
             you can get an OpenID from for example <a href="http://claimid.com/">claimID</a>.
         </p>
-    </lift:CurrentUser.offline>
+    </lift:User.offline>
     <p>
         To browse
-        <lift:CurrentUser.online>and contribute to</lift:CurrentUser.online>
+        <lift:User.online>and contribute to</lift:User.online>
         the PND repository, look in the menu to the left.
     </p>
 </lift:surround>
-

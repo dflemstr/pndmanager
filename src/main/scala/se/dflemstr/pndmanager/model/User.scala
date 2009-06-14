@@ -4,8 +4,8 @@ import scala.xml.Text
 import net.liftweb._
 import mapper._
 import http._
-import js._
-import JsCmds._
+import sitemap.{Loc,Menu}
+import Loc._
 import SHtml._
 import util._
 import Helpers._
@@ -22,86 +22,117 @@ object User extends User with MetaOpenIDProtoUser[User] {
   /** The base URL that is used for user management */
   override val basePath: List[String] = "user" :: Nil
   def openIDVendor = SimpleOpenIdVendor
-  
-  override def screenWrap = Full(
-    <lift:surround with="default" at="content">
-        <lift:bind />
-    </lift:surround>)
 
-  override def loginXhtml =
-    <form method="post" action={S.uri}>
-      <table>
-        <tr>
-          <td>{S.?("your")} <lift:OpenID.link>OpenID</lift:OpenID.link>:</td>
-          <td><user:openid /></td>
-        </tr>
-        <tr>
-          <td>&nbsp;</td>
-          <td>{S.?("openid.name.explanation")}</td>
-        </tr>
-        <tr>
-          <td>&nbsp;</td><td><user:submit /></td>
-        </tr>
-      </table>
-    </form>
+  //This is unused, since we use external templates
+  override def screenWrap = Empty
 
-  override def editXhtml(user: User) =
-    <form method="post" action={S.uri}>
-       <table>
-         <tbody>
-          {localForm(user, true)}
-         </tbody>
-         <tfoot>
-           <tr><td> </td><td><user:submit/></td></tr>
-         </tfoot>
-       </table>
-    </form>
-
-  override def login = {
+  /** Create a login form with the specified template */
+  def login(xhtml: NodeSeq) = {
     if (S.post_?) {
       S.param("username").
-      foreach(username =>
-              openIDVendor.loginAndRedirect(username, performLogUserIn)
-      )
+      foreach(username => openIDVendor.loginAndRedirect(username, performLogUserIn))
     }
-    def performLogUserIn(openid: Box[Identifier],
-                                  fo: Box[VerificationResult],
-                                  exp: Box[Exception]): LiftResponse = {
+    def performLogUserIn(openid: Box[Identifier], fo: Box[VerificationResult],
+                         exp: Box[Exception]): LiftResponse = {
       (openid, exp) match {
         case (Full(id), _) =>
           val user = this.findOrCreate(id.getIdentifier)
           logUserIn(user)
-          S.notice(S.?("welcome.user").replace("%user%", user.niceName))
+          S.notice(S.?("welcome.user") replace ("%user%", user.niceName))
         case (_, Full(exp)) =>
-          S.error(S.?("report.exception").replace("%exception%", exp.getMessage))
+          S.error(S.?("report.exception") replace ("%exception%", exp.getMessage))
         case _ =>
-          S.error(S.?("report.loginreason").replace("%reason%", fo.toString))
+          S.error(S.?("report.loginreason") replace ("%reason%", fo.toString))
       }
       RedirectResponse("/")
     }
 
-    Helpers.bind("user", loginXhtml,
-                 "openid" -> (FocusOnLoad(<input type="text" name="username"/>)),
-                 "submit" -> (<input type="submit" value={S.??("log.in")}/>))
+    bind("user", xhtml,
+         "openid" -> (js.JsCmds.FocusOnLoad(<input type="text" name="username"/>)),
+         "submit" -> (<input type="submit" value={S.??("log.in")}/>))
   }
 
-  protected def localForm(user: User, ignorePassword: Boolean): NodeSeq = {
-    signupFields.
-    map(fi => getSingleton.getActualBaseField(user, fi)).
-    filter(f => !ignorePassword || (f match {
-          case f: MappedPassword[User] => false
-          case _ => true
-        })).
-    flatMap(f =>
-      f.toForm.toList.map(form => //hack the nickname until it is translatable "for real", upstream
-        (<tr>
-            <td>{if(f.displayName == "nickname") S.?("nickname") else f.displayName}</td>
-            <td>{form}</td>
-         </tr>) ) )
+  /** Create an edit form with the specified template */
+  def edit(xhtml: NodeSeq) = {
+    val theUser: User = currentUser.open_! // we know we're logged in
+    val theName = editPath.mkString("")
+
+    def testEdit() {
+      theUser.validate match {
+        case Nil =>
+          theUser.save
+          S.notice(S.??("profle.updated"))
+          S.redirectTo(homePage)
+
+        case xs =>
+          S.error(xs)
+          editFunc(Full(innerEdit _))
+      }
+    }
+
+    def innerEdit = bind("user", xhtml,
+                         "field" -> ((h: NodeSeq) => localForm(h, theUser, true)),
+                         "submit" -> SHtml.submit(S.??("edit"), testEdit _))
+
+    Log.info(S.uri)
+    innerEdit
   }
 
+  /** Make a form with all the editable fields of an user, from a template */
+  protected def localForm(xhtml: NodeSeq, user: User, ignorePassword: Boolean): NodeSeq = {
+    signupFields
+      .map(fi => getSingleton.getActualBaseField(user, fi)) //get actual fields
+      .filter(f => !ignorePassword || (f match { //remove the password field
+        case f: MappedPassword[_] => false
+        case _ => true
+      }))
+      .flatMap(f => //iterate through all fields
+        bind("field", xhtml,
+          "name" ->(if(f.displayName == "nickname")
+                      Text(S.?("nickname"))
+                    else
+                      Text(f.displayName)),
+          "form" -> f.toForm)
+      )
+    //(The nickname hack above is there to fix a translation mistake in the Lift Core)
+    //TODO: fix this upstream
+  }
+
+  /** Find an user by nickname */
   override def findByNickname(str: String): List[User] =
     findAll(By(nickname, str))
+
+  //
+  //  The following overrides allow us to create custom templates for User locations
+  //
+
+  /**
+   * The menu item for login
+   */
+  override def loginMenuLoc: Box[Menu] =
+    Full(Menu(Loc("Login", loginPath, S.??("login"),
+                  If(User.notLoggedIn_? _, S.??("already.logged.in")))))
+
+  /**
+   * The menu item for logout
+   */
+  override def logoutMenuLoc: Box[Menu] =
+    Full(Menu(Loc("Logout", logoutPath, S.??("logout"), testLogginIn)))
+
+  /**
+   * The menu item for editing the user
+   */
+  override def editUserMenuLoc: Box[Menu] =
+    Full(Menu(Loc("EditUser", editPath, S.??("edit.user"), testLogginIn)))
+
+  override def createUserMenuLoc: Box[Menu] =  Empty
+  override def lostPasswordMenuLoc: Box[Menu] = Empty
+  override def resetPasswordMenuLoc: Box[Menu] = Empty
+  override def changePasswordMenuLoc: Box[Menu] = Empty
+
+  //don't want to ruin the staircase effect, leaving space here
+
+  override def validateUserMenuLoc: Box[Menu] = Empty
 }
 
 class User extends OpenIDProtoUser[User] {

@@ -56,7 +56,7 @@ object Package extends Package with LongKeyedMetaMapper[Package] with LongCRUDif
   //Check if the current user is allowed to change a package
   protected def mutablePackage_?(p: Package) =
     User.loggedIn_? &&
-      (p.owner.is == User.currentUser || (User.currentUser.map(_.superUser.is) openOr false))
+      (p.owner == User.currentUser || (User.currentUser.map(_.superUser.is) openOr false))
 
   override def crudDoForm(item: Package, noticeMsg: String)(in: NodeSeq): NodeSeq = {
     val from = referer
@@ -173,7 +173,7 @@ trait Visible {
 }
 
 /** A class that provides information about where a field is displayed */
-sealed case class VisibleScope
+sealed case class VisibleScope()
 
 /** Display the field in digests, summaries/lists and detail views */
 case object Digest extends VisibleScope
@@ -352,7 +352,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     }
 
     //Am I making this more complicated than it is?
-    trait Validee { def vaildate: List[FieldError] }
+    trait Validee { def validate: List[FieldError] }
     new Validee {
        def validate = errors.toList
     }
