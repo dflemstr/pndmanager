@@ -164,7 +164,7 @@ object Package extends Package with LongKeyedMetaMapper[Package] with LongCRUDif
   }
 }
 
-trait Editable //Just a simple tagging trait that shows fields when editing
+trait Editable //Just a simple tagging trait that reveals fields when editing
 
 trait Visible {
   def asHtml: NodeSeq
@@ -198,65 +198,54 @@ class Package extends LongKeyedMapper[Package] with IdPK {
   //The package owner/maintainer; NOT the author!
   object owner extends MappedLongForeignKey(this, User) with Visible {
     val scope = Summary
-
     override def displayName = S.?("owner")
-
     override def asHtml = Text(User.findByKey(is).map(_.nickname.is) openOr "Unknown")
   }
 
   object createdOn extends MappedDateTime(this) with Visible {
     val scope = Detail
-    
     override def displayName = S.?("created")
-
     override def validations = super.validations ::: List(notInFuture(this) _)
-
     override def asHtml = dateAsHtml(is)
   }
 
   object pndFile extends MappedBinary(this) with Editable with Visible {
     val scope = Digest
-
+    override def displayName = S.?("pnd.file")
     override def validations = notZeroSize _ :: containsPXML _ :: super.validations
 
     def notZeroSize(data: Array[Byte]) =
-      List(FieldError(this, Text("The PND file didn't contain anything at all!")))
+      List(FieldError(this, Text("The PND file didn't contain anything at all!"))) //TODO: translate!
         .filter(_ => data.length == 0)
 
-    def containsPXML(data: Array[Byte]) =
-      List(FieldError(this, Text("The specified PND does not contain PXML information!")))
-        .filter(_ => try {PXML.fromPND(data).tree == <PXML></PXML>} //TODO: the PXML is read twice, fix this!
-                     catch { case _ => true}) //if the PXML is empty or couldn't be found
+    //the second tuple element here contains List[FieldError]
+    def containsPXML(data: Array[Byte]) = PND(data).PXMLdata(this)._2
+
+    override def _toForm = Full(SHtml.fileUpload(storeTheFile))
 
     def storeTheFile(file: FileParamHolder) =
       set(file.file) //store the binary information of the file
-
-    override def displayName = S.?("pnd.file")
-
-    override def _toForm = Full(SHtml.fileUpload(storeTheFile))
+      
     override def asHtml = <a href={downloadLoc.createLink(NullLocParams)}>{downloadLoc.linkText openOr "Download"}</a>
   }
 
   object name extends MappedString(this, 64) with Visible {
     val scope = Digest
-
     override def displayName = S.?("name")
     override def validations = onlyAlphaNum _ :: super.validations
 
-    override def dbIndexed_? = true
-
     def onlyAlphaNum(name: String) = 
-      List(FieldError(this, 
-                      Text(S.?("invalid.pkgn.only.alphanum") + ": \"" + name + "\""))
-      ) filter (_ => !(name matches "[-_a-z0-9\\.]+"))
+      PXML.idFieldErrors(this) filter (_ => !(name matches PXML.idRegex))
+
+    override def dbIndexed_? = true
   }
 
   object version extends MappedString(this, 32) with Visible {
-    //I'm too lazy to make a new mapped field and this solution has its benefits anyways
-    //So MappedString suffices for now
+    //The actual value of this is a 16 char hex string, so
+    //that it becomes easy to sort versions since it can be done alphabetically
+    // (And I didn't want to create a custom MappedField just for this)
     val scope = Digest
-
-    override def displayName = "Version"
+    override def displayName = "Version" //TODO: translate!
 
     protected def pad(value: String) =
       "0" * (8 - value.length) + value
@@ -287,7 +276,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
   object description extends Visible {
     val scope = Detail
 
-    def displayHtml = Text("Description")
+    def displayHtml = Text("Description") //TODO: translate!
 
     def asHtml = {
       val descriptions = LocalizedPackageDescription.findAll(
@@ -299,7 +288,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
       (localized, en_US) match {
         case (Some(descr), _) => Text(descr.string)
         case (None, Some(descr)) => Text(descr.string)
-        case (None, None) => <em>(No translation found for {S.locale})</em>
+        case (None, None) => <em>(No translation found for {S.locale})</em> //TODO: translate!
       }
     }
   }
@@ -307,7 +296,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
   object title extends Visible {
     val scope = Summary
 
-    def displayHtml = Text("Title")
+    def displayHtml = Text("Title") //TODO: translate!
 
     def asHtml = { //TODO: eliminate this code duplication
       val titles = LocalizedPackageTitle.findAll(
@@ -322,7 +311,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
       (localized, en_US) match {
         case (Some(title), _) => Text(title.string)
         case (None, Some(title)) => Text(title.string)
-        case (None, None) => <em>(No translation found for {S.locale})</em>
+        case (None, None) => <em>(No translation found for {S.locale})</em> //TODO: translate!
       }
     }
   }

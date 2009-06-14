@@ -14,7 +14,7 @@ object Category extends Category with LongKeyedMetaMapper[Category] {
 
 class Category extends LongKeyedMapper[Category] with IdPK {
   def getSingleton = Category
+  
   object name extends MappedString(this, 32)
-
   object description extends MappedString(this, 1024)
 }

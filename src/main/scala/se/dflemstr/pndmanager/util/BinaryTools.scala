@@ -1,5 +1,8 @@
 package se.dflemstr.pndmanager.util
 
+/**
+ * Contains various tools that are useful when parsing binaries of various types
+ */
 object BinaryTools {
 
   private def nextIndex[A](oldIndex: Int, value: A, pattern: Seq[A]): Int =
@@ -16,9 +19,9 @@ object BinaryTools {
 
   /**
    * Use the Knuth-Morris-Pratt Algorithm to locate a pattern within a large piece of data
-   * The variable names here are kinda undescriptive but I don't care
    */
   def patternIndex[A](data: Seq[A], pattern: Seq[A], failure: Seq[Int]): Option[Int] = {
+    //TODO: use more descriptive var names
     def scanAt(start: Int, index: Int): Option[Int] =
       if(start == data.length)
         None

@@ -3,12 +3,10 @@ package se.dflemstr.pndmanager.snippet
 import model._
 import _root_.net.liftweb.http._
 import S._
-import _root_.net.liftweb.util._
-import Helpers._
-import _root_.net.liftweb.mapper._
 import _root_.scala.xml._
 import _root_.java.util.Locale
 
+/** Provides various snippets that are useful for user management */
 class CurrentUser {
   def online(html: NodeSeq): NodeSeq = if(User.loggedIn_?) html else NodeSeq.Empty
 

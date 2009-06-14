@@ -31,9 +31,6 @@ class Boot {
     initAjax()
 
     initFrameworks()
-    
-    //Convert page to UTF-8 before sending
-    LiftRules.early.append(makeUtf8)
   }
   
   private def initDB() = {
@@ -76,6 +73,11 @@ class Boot {
 
     //Init the TableSorter widget
     net.liftweb.widgets.tablesorter.TableSorter.init()
+  }
+
+  def setHooks() = {
+    //Convert page to UTF-8 before sending
+    LiftRules.early.append(makeUtf8)
   }
 
   private def makeUtf8(req: HttpServletRequest) {

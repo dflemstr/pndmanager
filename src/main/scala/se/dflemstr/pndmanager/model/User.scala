@@ -16,9 +16,12 @@ import _root_.org.openid4java.discovery.Identifier
 import _root_.org.openid4java.consumer._
 
 object User extends User with MetaOpenIDProtoUser[User] {
+  /** The database table in which all users are stored */
   override def dbTableName = "users"
-  def openIDVendor = SimpleOpenIdVendor
+
+  /** The base URL that is used for user management */
   override val basePath: List[String] = "user" :: Nil
+  def openIDVendor = SimpleOpenIdVendor
   
   override def screenWrap = Full(
     <lift:surround with="default" at="content">
@@ -26,29 +29,33 @@ object User extends User with MetaOpenIDProtoUser[User] {
     </lift:surround>)
 
   override def loginXhtml =
-  <form method="post" action={S.uri}>
-    <table>
-      <tr>
-        <td>{S.?("your")} <lift:OpenID.link>OpenID</lift:OpenID.link>:</td>
-        <td><user:openid /></td>
-      </tr>
-      <tr>
-        <td>&nbsp;</td>
-        <td>{S.?("openid.name.explanation")}</td>
-      </tr>
-      <tr>
-        <td>&nbsp;</td><td><user:submit /></td>
-      </tr>
-    </table>
-  </form>
+    <form method="post" action={S.uri}>
+      <table>
+        <tr>
+          <td>{S.?("your")} <lift:OpenID.link>OpenID</lift:OpenID.link>:</td>
+          <td><user:openid /></td>
+        </tr>
+        <tr>
+          <td>&nbsp;</td>
+          <td>{S.?("openid.name.explanation")}</td>
+        </tr>
+        <tr>
+          <td>&nbsp;</td><td><user:submit /></td>
+        </tr>
+      </table>
+    </form>
 
   override def editXhtml(user: User) =
-  <form method="post" action={S.uri}>
-     <table>
-       {localForm(user, true)}
-       <tr><td> </td><td><user:submit/></td></tr>
-     </table>
-  </form>
+    <form method="post" action={S.uri}>
+       <table>
+         <tbody>
+          {localForm(user, true)}
+         </tbody>
+         <tfoot>
+           <tr><td> </td><td><user:submit/></td></tr>
+         </tfoot>
+       </table>
+    </form>
 
   override def login = {
     if (S.post_?) {
