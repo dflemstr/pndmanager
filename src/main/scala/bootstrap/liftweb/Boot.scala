@@ -10,6 +10,7 @@ import Helpers._
 import _root_.net.liftweb.mapper.{DB, ConnectionManager, Schemifier, DefaultConnectionIdentifier, ConnectionIdentifier}
 import _root_.java.sql.{Connection, DriverManager}
 import _root_.se.dflemstr.pndmanager.model._
+import _root_.se.dflemstr.pndmanager.dispatch.FileDispatcher
 import _root_.javax.servlet.http.HttpServletRequest
 
 /**
@@ -21,6 +22,8 @@ class Boot {
     // The location of our webapp classes
     LiftRules.addToPackages("se.dflemstr.pndmanager")
 
+    initDispatchers()
+
     initDB()
     schemifyMappers()
 
@@ -31,6 +34,10 @@ class Boot {
     initAjax()
 
     initFrameworks()
+  }
+
+  private def initDispatchers() = {
+    LiftRules.dispatch.append(FileDispatcher.dispatcher)
   }
   
   private def initDB() = {
@@ -83,7 +90,6 @@ class Boot {
   private def makeUtf8(req: HttpServletRequest) {
     req.setCharacterEncoding("UTF-8")
   }
-
 }
 
 /**

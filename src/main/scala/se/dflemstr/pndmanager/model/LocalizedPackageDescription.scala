@@ -4,7 +4,10 @@ import net.liftweb.mapper._
 import util.{LocalizedString, OwnerField}
 
 object LocalizedPackageDescription extends LocalizedPackageDescription
-  with LongKeyedMetaMapper[LocalizedPackageDescription]
+  with LongKeyedMetaMapper[LocalizedPackageDescription] {
+
+  override def dbTableName = "pkgdescriptions"
+}
 
 class LocalizedPackageDescription extends LocalizedString[LocalizedPackageDescription]
     with OwnerField with IdPK {

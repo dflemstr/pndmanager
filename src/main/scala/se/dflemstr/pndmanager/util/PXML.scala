@@ -75,7 +75,7 @@ case class PXML(val tree: Elem) {
     validateId(field) ::: validateVersion(field)
   
   /** The unique ID field */
-  def id: String = (tree \ "@id").text
+  def id: String = (tree \ "@id").text.replace(".", "_") //TODO: remove this hack
 
   /** A list of localized description fields */
   def description = loadLocalizedStringField("description")

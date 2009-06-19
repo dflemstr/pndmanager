@@ -103,7 +103,7 @@
           <args>
             <arg>-deprecation</arg>
             <arg>-unchecked</arg>
-            <arg>-optimise</arg>
+            <!--<arg>-optimise</arg>-->
           </args>
         </configuration>
       </plugin>
@@ -115,7 +115,7 @@
           <scanIntervalSeconds>5</scanIntervalSeconds>
         </configuration>
       </plugin>
-<!-- This plugin is buggy at the moment; better disable it
+<!-- still broken...
       <plugin>
         <groupId>net.sf.alchim</groupId>
         <artifactId>yuicompressor-maven-plugin</artifactId>

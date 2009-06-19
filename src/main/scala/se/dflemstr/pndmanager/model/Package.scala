@@ -50,13 +50,39 @@ object Package extends Package with LongKeyedMetaMapper[Package] with LongCRUDif
       </table>
    </lift:crud.create>
 
+  override def _showAllTemplate =
+  <lift:crud.all>
+    <table id={showAllId} class={showAllClass}>
+      <tr>
+        <crud:header_item><th><crud:name/></th></crud:header_item>
+        <th>&nbsp;</th>
+        <th>&nbsp;</th>
+        <th>&nbsp;</th>
+      </tr>
+      <tbody>
+        <crud:row>
+          <tr>
+            <crud:row_item><td><crud:value/></td></crud:row_item>
+            <td><crud:view/></td>
+            <td><crud:edit/></td>
+            <td><crud:delete/></td>
+          </tr>
+        </crud:row>
+        <tr>
+          <td colspan="3"><crud:prev>{previousWord}</crud:prev></td>
+          <td colspan="3"><crud:next>{nextWord}</crud:next></td>
+        </tr>
+      </tbody>
+    </table>
+  </lift:crud.all>
+
   //A condition for menus that requires a user to be logged in; otherwise it redirects the visitor to the log in page
   protected def userAuthorization = If(User.loggedIn_? _, () => RedirectResponse(User.loginPageURL))
 
   //Check if the current user is allowed to change a package
   protected def mutablePackage_?(p: Package) =
     User.loggedIn_? &&
-      (p.owner == User.currentUser || (User.currentUser.map(_.superUser.is) openOr false))
+      (p.owner == (User.currentUser openOr 0l) || (User.currentUser.map(_.superUser.is) openOr false))
 
   override def crudDoForm(item: Package, noticeMsg: String)(in: NodeSeq): NodeSeq = {
     val from = referer
@@ -136,24 +162,17 @@ object Package extends Package with LongKeyedMetaMapper[Package] with LongCRUDif
           .flatMap(f => bind("crud", in, "value" -> f.asHtml))
 
         bind("crud", in , "row_item" -> doRowItem _,
-          FuncAttrBindParam("edit_href", _ =>
-            if(mutablePackage_?(c))
-              Text(editPathString+"/"+(obscurePrimaryKey(c)))
+          "edit" -> (if(mutablePackage_?(c))
+              <a href={editPathString+"/"+obscurePrimaryKey(c)}>{S.??("Edit")}</a>
             else
-              Text(""),
-            "href"),
+              Text("")),
 
-          FuncAttrBindParam("view_href", _ =>
-            Text(viewPathString+"/"+
-                 (obscurePrimaryKey(c))),
-            "href"),
+          "view" -> (<a href={viewPathString+"/"+obscurePrimaryKey(c)}>{S.??("View")}</a>),
 
-          FuncAttrBindParam("delete_href", _ =>
-            if(mutablePackage_?(c))
-              Text(deletePathString+"/"+(obscurePrimaryKey(c)))
-            else 
-              Text(""),
-            "href")
+          "delete" -> (if(mutablePackage_?(c))
+              <a href={deletePathString+"/"+(obscurePrimaryKey(c))}>{S.??("Delete")}</a>
+            else
+              Text(""))
         )}
 
       bind("crud", in, "header_item" -> doHeaderItems _,
@@ -193,7 +212,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     List(title, name, version, description, owner, createdOn, pndFile)
     
   def downloadLoc = Loc("package-" + name.is,
-                        List("package", name.is + "-" + version.is + ".pnd"), "Download")
+                        List("package", name.is + "-" + version.toHumanReadable + ".pnd"), "Download")
 
   //The package owner/maintainer; NOT the author!
   object owner extends MappedLongForeignKey(this, User) with Visible {
@@ -250,10 +269,13 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     protected def pad(value: String) =
       "0" * (8 - value.length) + value
 
-    def fromTuple(version: (Int, Int, Int, Int)) = {
+    def valueFromTuple(version: (Int, Int, Int, Int)) = {
       def toHex(i: Int) = pad(Integer.toHexString(i))
-      set(toHex(version._1) + toHex(version._2) + toHex(version._3) + toHex(version._4))
+      (toHex(version._1) + toHex(version._2) + toHex(version._3) + toHex(version._4))
     }
+
+    def fromTuple(version: (Int, Int, Int, Int)) = 
+      set(valueFromTuple(version))
     
     protected def verList(s: String): List[Int] = s match {
       case "" => Nil
@@ -301,9 +323,6 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     def asHtml = { //TODO: eliminate this code duplication
       val titles = LocalizedPackageTitle.findAll(
         By(LocalizedPackageTitle.owner, Package.this))
-      Log.info(titles.length.toString)
-
-      titles.foreach(x => {Log.info(x.locale); Log.info(x.owner); Log.info(x.string)})
 
       val localized = titles.find(_.locale == S.locale)
       val en_US = titles.find(t => t.locale == "en_US" || t.locale == "en")

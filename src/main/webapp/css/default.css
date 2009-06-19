@@ -1,4 +1,9 @@
 
+.header {
+    text-align: right;
+    background: transparent url(../images/banner.png) bottom right no-repeat;
+}
+
 p {
     text-indent: 0 !important; /* override built-in CSS */
     margin-top: 1.5em !important;
