@@ -44,7 +44,7 @@ object User extends User with MetaOpenIDProtoUser[User] {
         case _ =>
           S.error(S.?("report.loginreason") replace ("%reason%", fo.toString))
       }
-      RedirectResponse("/")
+      RedirectResponse(homePage)
     }
 
     bind("user", xhtml,
@@ -53,27 +53,26 @@ object User extends User with MetaOpenIDProtoUser[User] {
   }
 
   /** Create an edit form with the specified template */
-  def edit(xhtml: NodeSeq) = {
+  def edit(xhtml: NodeSeq): NodeSeq = {
     val theUser: User = currentUser.open_! // we know we're logged in
 
     def testEdit() {
       theUser.validate match {
         case Nil =>
-          Log.info(theUser.nickname)
           theUser.save
-          S.notice("Profile updated") //TODO: translate!
           S.redirectTo(homePage)
 
         case xs =>
           S.error(xs)
-          S.mapSnippet(S.currentSnippet openOr "", innerEdit)
+          editFunc(Full(() => {Log.info("callback"); innerEdit}))
       }
     }
 
-    def innerEdit(t: NodeSeq) = bind("user", t,
-                                "field" -> ((h: NodeSeq) => localForm(h, theUser, true)),
-                                "submit" -> SHtml.submit(S.??("edit"), testEdit _))
-    innerEdit(xhtml)
+    def innerEdit = bind("user", xhtml,
+      "field" -> ((x: NodeSeq) => localForm(x, theUser, true)),
+      "submit" -> ((_: NodeSeq) => SHtml.submit(S.??("edit"), testEdit _)))
+
+    editFunc.map(_()) openOr innerEdit
   }
 
   /* Make a form with all the editable fields of an user, from a template */
@@ -81,16 +80,18 @@ object User extends User with MetaOpenIDProtoUser[User] {
     signupFields
       .map(fi => getSingleton.getActualBaseField(user, fi)) //get actual fields
       .filter(f => !ignorePassword || (f match { //remove the password field
-        case f: MappedPassword[_] => false
+        case _: MappedPassword[_] => false
         case _ => true
       }))
-      .flatMap(f => 
-          bind("field", xhtml,
-            "name" ->(if(f.displayName == "nickname")
-                        Text(S.?("nickname"))
-                      else
-                        Text(f.displayName)),
-            "form" -> f.toForm)
+      .flatMap(field => 
+          field.toForm.toList.flatMap(form =>
+            bind("field", xhtml,
+              "name" ->(if(field.displayName == "nickname")
+                          Text(S.?("nickname"))
+                        else
+                          Text(field.displayName)),
+              "form" -> form)
+          )
         )
     //(The nickname hack above is there to fix a translation mistake in the Lift Core)
     //TODO: fix this upstream
