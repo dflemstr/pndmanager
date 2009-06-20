@@ -58,7 +58,7 @@ class Boot {
   
   private def buildSiteMap() = {
     val userMenu = Menu(Loc("userInfo", List("user", "index"), "User"), User.sitemap: _*)
-    val packageMenu = Menu(Loc("packageInfo", List("packages", "index"), "Packages"), Package.menus: _*)
+    val packageMenu = Menu(Loc("packageInfo", List("packages", "index"), "Packages"))
     val entries = Menu(Loc("home", List("index"), "Home")) ::
       packageMenu :: userMenu :: Nil
 

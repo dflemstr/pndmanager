@@ -21,7 +21,7 @@ object BinaryTools {
    * Use the Knuth-Morris-Pratt Algorithm to locate a pattern within a large piece of data
    */
   def patternIndex[A](data: Seq[A], pattern: Seq[A], failure: Seq[Int]): Option[Int] = {
-    //TODO: use more descriptive var names
+    //TODO: use more descriptive variable names
     def scanAt(start: Int, index: Int): Option[Int] =
       if(start == data.length)
         None

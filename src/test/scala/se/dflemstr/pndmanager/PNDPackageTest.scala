@@ -15,14 +15,14 @@ object PNDPackage extends Specification {
       val pnd = "jdhkfsdjfhlk\uafeee<PXML><title lang=\"en_US\">Sample App 1</title></PXML>".getBytes
       val pxml = PND(pnd).PXMLdata
 
-      pxml must_== (<PXML><title lang="en_US">Sample App 1</title></PXML>)
+      pxml.open_! must_== (<PXML><title lang="en_US">Sample App 1</title></PXML>)
     }
 
     "manage to remove trailing trash from an extracted PXML file" in {
       val pnd = "jskld\u0000ajfölska\u2341jdöflkj<PXML><title lang=\"en_US\">Sample App 2</title></PXML>jkjhsdkajhsl\u2231kewyutuqiytuiytir".getBytes
       val pxml = PND(pnd).PXMLdata
 
-      pxml must_== (<PXML><title lang="en_US">Sample App 2</title></PXML>)
+      pxml.open_! must_== (<PXML><title lang="en_US">Sample App 2</title></PXML>)
     }
   }
 }

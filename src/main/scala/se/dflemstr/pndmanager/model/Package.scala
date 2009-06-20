@@ -10,226 +10,193 @@ import sitemap._
 import Loc._
 import mapper._
 import http._
-import util.Helpers._
-import util.{Box, Full, Log}
+import util._
+import Helpers._
 
 import _root_.se.dflemstr.pndmanager.util._
 
-object Package extends Package with LongKeyedMetaMapper[Package] with LongCRUDify[Package] {
+object Package extends Package with LongKeyedMetaMapper[Package] {
+  //for the database:
   override def fieldOrder = List(name, version, owner, createdOn, pndFile)
   override def dbTableName = "packages"
 
-  //Give the menu a more suitable name
-  override def createMenuName = "Upload new package"
+  //for the actual usage of entries:
+  def allEntries: List[Entry] =
+    List(title, name, version, description, owner, createdOn, pndFile)
 
-  //Allow only logged-in users to create packages
-  override def createMenuLoc = Full(Menu(Loc("Create package", createPath,
-    createMenuName, locSnippets, Loc.Template(createTemplate), userAuthorization)))
-
-  override def _createTemplate =
-   <lift:crud.create form="post" multipart="true">
-      <table id={createId} class={createClass}>
-        <tbody>
-          <crud:field>
-            <tr>
-              <td>
-                <crud:name/>
-              </td>
-              <td>
-                <crud:form/>
-              </td>
-            </tr>
-          </crud:field>
-        </tbody>
-        <tfoot>
-          <tr>
-            <td> </td>
-            <td><crud:submit>{createButton}</crud:submit></td>
-          </tr>
-        </tfoot>
-      </table>
-   </lift:crud.create>
-
-  override def _showAllTemplate =
-  <lift:crud.all>
-    <table id={showAllId} class={showAllClass}>
-      <tr>
-        <crud:header_item><th><crud:name/></th></crud:header_item>
-        <th>&nbsp;</th>
-        <th>&nbsp;</th>
-        <th>&nbsp;</th>
-      </tr>
-      <tbody>
-        <crud:row>
-          <tr>
-            <crud:row_item><td><crud:value/></td></crud:row_item>
-            <td><crud:view/></td>
-            <td><crud:edit/></td>
-            <td><crud:delete/></td>
-          </tr>
-        </crud:row>
-        <tr>
-          <td colspan="3"><crud:prev>{previousWord}</crud:prev></td>
-          <td colspan="3"><crud:next>{nextWord}</crud:next></td>
-        </tr>
-      </tbody>
-    </table>
-  </lift:crud.all>
-
-  //A condition for menus that requires a user to be logged in; otherwise it redirects the visitor to the log in page
-  protected def userAuthorization = If(User.loggedIn_? _, () => RedirectResponse(User.loginPageURL))
+  //A condition for menus that requires a user to be logged in;
+  //otherwise it redirects the visitor to the log in page
+  private def userAuthorization = If(User.loggedIn_? _, () => RedirectResponse(User.loginPageURL))
 
   //Check if the current user is allowed to change a package
-  protected def mutablePackage_?(p: Package) =
+  private def mutablePackage_?(p: Package) =
     User.loggedIn_? &&
       (p.owner == (User.currentUser openOr 0l) || (User.currentUser.map(_.superUser.is) openOr false))
 
-  override def crudDoForm(item: Package, noticeMsg: String)(in: NodeSeq): NodeSeq = {
-    val from = referer
-    val snipName = S.currentSnippet
+  //A validation for MappedFields for checking if a date is in the future
+  private def notInFuture(field: MappedDateTime[Package])(date: Date) =
+    List(FieldError(field, Text(S.?("future.package"))))
+      .filter(_ => date.getTime >= System.currentTimeMillis)
 
-    def loop(html:NodeSeq): NodeSeq = {  
-      def flatMapEditable[T](toMap: Package, func: (NodeSeq, Box[NodeSeq], NodeSeq) => Seq[T]): List[T] =
-        formFields(toMap)
-          .filter(_.isInstanceOf[Editable]) //only allow editable fields
-          .flatMap(field => field.toForm.toList.flatMap(fo => func(field.displayHtml, field.fieldId, fo)))
+  //Converts a date to HTML, automatically using the logged-in user's preferences
+  private def dateAsHtml(date: Date) = {
+    val formatter = DateFormat.getDateInstance(DateFormat.LONG, S.locale)
+    formatter.setTimeZone(S.timeZone)
 
-      def doFields(html: NodeSeq): NodeSeq =
-        flatMapEditable(item, (title, _, form) =>
-          bind("crud", html, "name" -> title, "form" -> form))
-        
-      def ifOK(validee: {def validate: List[FieldError]})(action: => Unit)(other: => Unit) = validee.validate match {
-        case Nil => action
+    scala.xml.Text(formatter.format(date))
+  }
+
+  private def makeForm(pkg: Package, submitMsg: String)(template: NodeSeq) = {
+    val origin = S.referer openOr "/"
+    val thisSnippet = S.currentSnippet
+
+    def makePage(html: NodeSeq): NodeSeq = {
+      def makeFields(temp: NodeSeq): NodeSeq = (for {
+          entry <- allEntries
+          if(entry match {
+              case x: Editable => true
+              case _ => false
+            })
+
+          instanceField = getActualBaseField(pkg, entry.asInstanceOf[Editable])
+        } yield bind("field", html,
+                     "name" -> instanceField.displayHtml,
+                     "input" -> instanceField.toForm)).flatMap(x => x) //I like one-liners...
+
+      def onSubmit() = pkg.doCreationProcess() match {
+        case Nil =>
+          pkg.save
+          if(submitMsg != "") S.notice(submitMsg)
+          S.redirectTo(origin)
         case error =>
           S.error(error)
-          try { other } catch {case _ => }
-          snipName.foreach(S.mapSnippet(_, loop))
+          thisSnippet.foreach(S.mapSnippet(_, makePage))
       }
 
-      def doSubmit() = {
-        ifOK(item.pndFile) { //first validate the file
-          item.createdOn(new Date).owner(User.currentUser)
-          ifOK(item.populateFieldsFromPND()) { //then load things from the file
-            ifOK(item) { //then check all other fields
-              S.notice(noticeMsg)
-              item.save //and save the entry
-              S.redirectTo(from)
-            } /*else*/ {item.delete_!}
-          } /*else*/ {item.delete_!}
-        } /*else*/ {item.delete_!}
-      }
-
-      bind("crud", html,
-           "field" -> doFields _,
-           "submit" ->
-           ((text: NodeSeq) => SHtml.submit(text.text, doSubmit _)))
+      bind("form", html,
+           "field" -> ((x: NodeSeq) => makeFields(x)),
+           "submit"-> ((x: NodeSeq) => SHtml.submit(x.text, onSubmit _)))
     }
 
-    loop(in)
+    makePage(template)
   }
 
-  override lazy val locSnippets = new DispatchLocSnippets {
-    val dispatch: PartialFunction[String, NodeSeq => NodeSeq] = {
-      case "crud.all" => doCrudAll
-      case "crud.create" => crudDoForm(create, S.??("Created"))
-    }
+  def obscurePrimaryKey(in: Package): String = obscurePrimaryKey(in.primaryKeyField.toString)
+  def obscurePrimaryKey(in: String): String = in
 
-    def doCrudAll(in: NodeSeq): NodeSeq = {
-      val first = S.param("first").map(toLong) openOr 0L
-      val list = findForList(first, 21)
+  def add(template: NodeSeq) = makeForm(create, "Add") _ //TODO: translate!
+  def addMenuLoc(path: List[String]): Box[Menu] =
+    Full(Menu(Loc("package.create", path, "Upload new Package"))) //TODO: translate!
 
-      def prev(in: NodeSeq) = if (first < 21) <xml:group>&nbsp;</xml:group>
-      else <a href={listPathString+"?first="+(0L max (first - 20L))}>{in}</a>
+  def editMenuLoc(path: List[String], snippetName: String): Box[Menu] =
+    Full(Menu(new Loc[Package] {
+      def name = "package.edit"
 
-      def next(in: NodeSeq) = if (list.length < 21) <xml:group>&nbsp;</xml:group>
-      else <a href={listPathString+"?first="+(first + 20L)}>{in}</a>
+      override val snippets: SnippetTest = {
+        case (snippetName, Full(p: Package)) => makeForm(p, "Package edited") _ //TODO: translate!
+      }
 
-      def filter(entries: List[Visible]) =
-        entries.filter(_.scope match {
-          case Summary => true
-          case Digest => true
-          case Custom(cond) => cond()
-          case Detail => false
+      def defaultParams = Empty
+
+      def params = Nil
+
+      val text = new Loc.LinkText(calcLinkText _)
+
+      def calcLinkText(in: Package): NodeSeq = Text("Edit") //TODO: translate!
+
+      override val rewrite: LocRewrite =
+        Full(NamedPF(name) {
+          case RewriteRequest(pp , _, _)
+            if pp.wholePath.startsWith(path) &&
+            pp.wholePath.length == (path.length + 1) &&
+            find(pp.wholePath.last).isDefined =>
+              (RewriteResponse(path), find(pp.wholePath.last).open_!)
         })
 
-      def doHeaderItems(in: NodeSeq): NodeSeq = filter(visibleEntries)
-        .flatMap(f => bind("crud", in, "name" -> f.displayHtml))
+      val link =
+        new Loc.Link[Package](path, false) {
+          override def createLink(in: Package) =
+          Full(Text(path.mkString("/", "/", "") + "/" + obscurePrimaryKey(in)))
+        }
+    }))
+    
+  def viewMenuLoc(path: List[String], snippetName: String): Box[Menu] =
+    Full(Menu(new Loc[Package] {
+      def name = "View Package" //TODO: translate!
 
-      def doRows(in: NodeSeq): NodeSeq =
-      list.take(20).flatMap {
-        c =>
-        def doRowItem(in: NodeSeq): NodeSeq = filter(c.visibleEntries)
-          .flatMap(f => bind("crud", in, "value" -> f.asHtml))
+      override val snippets: SnippetTest = {
+        case (snippetName, Full(p: Package)) => displayPackage(p) _
+      }
 
-        bind("crud", in , "row_item" -> doRowItem _,
-          "edit" -> (if(mutablePackage_?(c))
-              <a href={editPathString+"/"+obscurePrimaryKey(c)}>{S.??("Edit")}</a>
-            else
-              Text("")),
+      def defaultParams = Empty
 
-          "view" -> (<a href={viewPathString+"/"+obscurePrimaryKey(c)}>{S.??("View")}</a>),
+      def params = Nil
 
-          "delete" -> (if(mutablePackage_?(c))
-              <a href={deletePathString+"/"+(obscurePrimaryKey(c))}>{S.??("Delete")}</a>
-            else
-              Text(""))
-        )}
+      val text = new Loc.LinkText(calcLinkText _)
 
-      bind("crud", in, "header_item" -> doHeaderItems _,
-           "row" -> doRows _,
-           "prev" -> prev _, "next" -> next _)
+      def calcLinkText(in: Package): NodeSeq = Text("View") //TODO: translate!
 
-    }
+      override val rewrite: LocRewrite =
+        Full(NamedPF(name) {
+          case RewriteRequest(pp , _, _)
+            if pp.wholePath.startsWith(path) &&
+            pp.wholePath.length == (path.length + 1) &&
+            find(pp.wholePath.last).isDefined =>
+              (RewriteResponse(path), find(pp.wholePath.last).open_!)
+        })
+
+      def displayPackage(entry: Package)(in: NodeSeq): NodeSeq = {
+        def doItems(in: NodeSeq): NodeSeq =
+          allEntries.map(_ match {
+            case v: Visible =>
+              if(v.isVisibleIn(Appearance.Summary))
+                bind("item", in, "name" -> v.displayHtml, "value" -> v.asHtml)
+              else
+                Nil
+
+            case _ => Nil
+          }).flatMap(x => x)
+
+        bind("list", in, "item" -> doItems _)
+      }
+
+      val link =
+        new Loc.Link[Package](path, false) {
+          override def createLink(in: Package) =
+          Full(Text(path.mkString("/", "/", "") + "/" + obscurePrimaryKey(in)))
+        }
+    }))
+
+  def list(template: NodeSeq) = {
+
+  }
+
+  def delete(template: NodeSeq) = {
+    
   }
 }
-
-trait Editable //Just a simple tagging trait that reveals fields when editing
-
-trait Visible {
-  def asHtml: NodeSeq
-  def displayHtml: NodeSeq
-  val scope: VisibleScope
-}
-
-/** A class that provides information about where a field is displayed */
-sealed case class VisibleScope()
-
-/** Display the field in digests, summaries/lists and detail views */
-case object Digest extends VisibleScope
-
-/** Display the field in summaries/lists and detail views */
-case object Summary extends VisibleScope
-
-/** Display the field only in detail views */
-case object Detail extends VisibleScope
-
-/** Use a custom method for determining if the field is visible */
-case class Custom(val isVisible: () => Boolean) extends VisibleScope
 
 class Package extends LongKeyedMapper[Package] with IdPK {
+  import Package._
+  
   def getSingleton = Package
-  def visibleEntries: List[Visible] =
-    List(title, name, version, description, owner, createdOn, pndFile)
     
-  def downloadLoc = Loc("package-" + name.is,
-                        List("package", name.is + "-" + version.toHumanReadable + ".pnd"), "Download")
+  def downloadLoc = Loc("package-" + name.is + "-" + version.is,
+                        List("package", name.is + "-" + version.toHumanReadable + ".pnd"), "Download") //TODO: translate
 
   //The package owner/maintainer; NOT the author!
-  object owner extends MappedLongForeignKey(this, User) with Visible {
-    val scope = Summary
+  object owner extends MappedLongForeignKey(this, User) with ShowInSummary {
     override def displayName = S.?("owner")
-    override def asHtml = Text(User.findByKey(is).map(_.nickname.is) openOr "Unknown")
+    override def asHtml = Text(User.findByKey(is).map(_.nickname.is) openOr "Unknown") //TODO: translate!
   }
 
-  object createdOn extends MappedDateTime(this) with Visible {
-    val scope = Detail
+  object createdOn extends MappedDateTime(this) with ShowInDetail {
     override def displayName = S.?("created")
     override def validations = super.validations ::: List(notInFuture(this) _)
     override def asHtml = dateAsHtml(is)
   }
 
-  object pndFile extends MappedBinary(this) with Editable with Visible {
-    val scope = Digest
+  object pndFile extends MappedBinary(this) with Editable with ShowInDigest {
     override def displayName = S.?("pnd.file")
     override def validations = notZeroSize _ :: containsPXML _ :: super.validations
 
@@ -238,7 +205,10 @@ class Package extends LongKeyedMapper[Package] with IdPK {
         .filter(_ => data.length == 0)
 
     //the second tuple element here contains List[FieldError]
-    def containsPXML(data: Array[Byte]) = PND(data).PXMLdata(this)._2
+    def containsPXML(data: Array[Byte]) = try {
+      PND(data).PXMLdata.open_!
+      Nil
+    } catch {case _ => List(FieldError(this, Text("The PND field did not contain valid PXML data!")))} //TODO: translate!
 
     override def _toForm = Full(SHtml.fileUpload(storeTheFile))
 
@@ -248,22 +218,16 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     override def asHtml = <a href={downloadLoc.createLink(NullLocParams)}>{downloadLoc.linkText openOr "Download"}</a>
   }
 
-  object name extends MappedString(this, 64) with Visible {
-    val scope = Digest
+  object name extends MappedString(this, 64) with ShowInDigest {
     override def displayName = S.?("name")
-    override def validations = onlyAlphaNum _ :: super.validations
-
-    def onlyAlphaNum(name: String) = 
-      PXML.idFieldErrors(this) filter (_ => !(name matches PXML.idRegex))
 
     override def dbIndexed_? = true
   }
 
-  object version extends MappedString(this, 32) with Visible {
+  object version extends MappedString(this, 32) with ShowInDigest {
     //The actual value of this is a 16 char hex string, so
     //that it becomes easy to sort versions since it can be done alphabetically
     // (And I didn't want to create a custom MappedField just for this)
-    val scope = Digest
     override def displayName = "Version" //TODO: translate!
 
     protected def pad(value: String) =
@@ -295,9 +259,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     override def asHtml = Text(toHumanReadable)
   }
 
-  object description extends Visible {
-    val scope = Detail
-
+  object description extends ShowInDetail {
     def displayHtml = Text("Description") //TODO: translate!
 
     def asHtml = {
@@ -315,9 +277,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     }
   }
 
-  object title extends Visible {
-    val scope = Summary
-
+  object title extends ShowInSummary {
     def displayHtml = Text("Title") //TODO: translate!
 
     def asHtml = { //TODO: eliminate this code duplication
@@ -335,45 +295,87 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     }
   }
 
-  //A validation for MappedFields for checking if a date is in the future
-  protected def notInFuture(field: MappedDateTime[Package])(date: Date) =
-    List(FieldError(field, Text(S.?("future.package"))))
-      .filter(_ => date.getTime >= System.currentTimeMillis)
-
-  //Converts a date to HTML, automatically using the logged-in user's preferences
-  protected def dateAsHtml(date: Date) = {
-    val formatter = DateFormat.getDateInstance(DateFormat.LONG, S.locale)
-    formatter.setTimeZone(S.timeZone)
-
-    scala.xml.Text(formatter.format(date))
-  }
-
   /**
    * Reads the pndFile field and populates all the other fields and entries with
-   * acquired information. pndFile must be validated before this can happen!
+   * acquired information.
    */
-  def populateFieldsFromPND(): {def validate: List[FieldError]} = {
-    Package.this.save //just so that we get an ID; neccessary for associating localized strings
-    import scala.collection.mutable
-    val errors = new mutable.ListBuffer[FieldError]
+  def doCreationProcess(): List[FieldError] = pndFile.validate match {
+    case Nil =>
+      this.save //just so that we get an ID; neccessary for associating localized strings
+      try {
+        val pxml = PXML.fromPND(pndFile.is).open_! //throw an exception; we don't care here
 
-    try {
-      val pxml = PXML.fromPND(pndFile.is)
-      name(pxml.id)
-      version.fromTuple(pxml.version)
-      pxml.description.foreach(d => LocalizedPackageDescription
-                               .create.owner(this).string(d._1).locale(d._2).save)
+        pxml.validateId() //throws exceptions with explanations
+        name(pxml.id)
 
-      pxml.title.foreach(t => LocalizedPackageTitle
-                         .create.owner(this).string(t._1).locale(t._2).save)
-    } catch {
-      case e => errors += new FieldError(this.pndFile, Text(e.getLocalizedMessage))
-    }
+        pxml.validateVersion()
+        version.fromTuple(pxml.version)
 
-    //Am I making this more complicated than it is?
-    trait Validee { def validate: List[FieldError] }
-    new Validee {
-       def validate = errors.toList
-    }
+        //The description will be Nil automatically if none were found.
+        if(pxml.description.length == 0)
+          S.warning("The PND didn't contain any valid content descriptions; no descriptions will be shown!") //TODO: translate!
+
+        pxml.description.foreach(d => LocalizedPackageDescription
+                                 .create.owner(this).string(d._1).locale(d._2).save)
+
+        //The title will be Nil automatically if none were found.
+        if(pxml.title.length == 0)
+          S.warning("The PND didn't contain any valid titles; no titles will be shown!") //TODO: translate!
+          
+        pxml.title.foreach(t => LocalizedPackageTitle
+                           .create.owner(this).string(t._1).locale(t._2).save)
+
+        Nil
+      } catch {
+        //If we get errors, clean up and report browser-friendly errors
+        case e => {this.delete_!; List(FieldError(this.pndFile, Text(e.getLocalizedMessage)))}
+      }
+    case error => error //if the PND itself was erroneous, then step out instantly
   }
+}
+
+/** Marks anything that can represent an entry in a Mapper */
+trait Entry
+
+/** Marks an entry that can be edited by the user (read/write) */
+trait Editable extends BaseOwnedMappedField[Package] with Entry with Visible
+
+/** Marks an entry that appears in various appearances (read-only) */
+trait Visible extends Entry {
+  def asHtml: NodeSeq
+  def displayHtml: NodeSeq
+  def isVisibleIn(app: Appearance.Value): Boolean
+}
+
+/** Defines the apperances that entries can be in */
+object Appearance extends Enumeration {
+  val Digest, Summary, Detail = Value
+}
+
+/** Display the entry in digests, summaries/lists and detail views */
+trait ShowInDigest extends Visible {
+  def isVisibleIn(app: Appearance.Value) = app match {
+    case _ => true //This thing appears in all apearances
+  }
+}
+
+/** Display the entry in summaries/lists and detail views */
+trait ShowInSummary extends Visible {
+  def isVisibleIn(app: Appearance.Value) = app match {
+    case Appearance.Summary | Appearance.Detail => true
+    case _ => false
+  }
+}
+
+/** Display the entry only in detail views */
+trait ShowInDetail extends Visible {
+  def isVisibleIn(app: Appearance.Value) = app match {
+    case Appearance.Detail => true
+    case _ => false
+  }
+}
+
+/** Use a custom method to determine if the field is visible */
+case class Custom(val cond: () => Boolean) extends Visible {
+  def isVisibleIn(app: Appearance.Value) = cond()
 }

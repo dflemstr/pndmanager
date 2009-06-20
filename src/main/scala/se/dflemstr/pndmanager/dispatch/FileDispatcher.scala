@@ -26,22 +26,19 @@ object FileDispatcher {
   }
 
   def pndFile(identifier: String): Box[LiftResponse] = {
-    Log.info("hello, seeker of the file!")
-    Log.info(identifier)
+    Log.info("A file is being downloaded: " + identifier)
     val masterRegex = "^" + PXML.idRegex + """-(\d+\.){3}\d+\.pnd$"""
+    
     if(identifier matches masterRegex) {
-      Log.info("Sucess!")
       val nameParts = identifier.split("-")
       val versionString = (nameParts.last take (nameParts.last.length - 4)).toString
       val actualName = (nameParts take (nameParts.length - 1)).mkString("")
-      Log.info((nameParts, versionString, actualName))
       val version = makeVersion(versionString.split('.').toList)
 
       (Package.find(
           By(Package.name, actualName),
           By(Package.version, Package.version.valueFromTuple(version))): @unchecked) match {
         case Full(p) =>
-          Log.info("we got far...")
           Full(InMemoryResponse(p.pndFile,
                                 ("Content-Type" -> "application/x-pandora-pnd") :: Nil, Nil, 200))
         case Empty => Empty

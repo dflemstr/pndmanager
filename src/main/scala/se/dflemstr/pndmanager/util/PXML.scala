@@ -2,19 +2,22 @@ package se.dflemstr.pndmanager.util
 
 import scala.xml._
 import net.liftweb.http.{FieldError, FieldIdentifier}
+import net.liftweb.util.{Box,Full,Empty,Failure}
 
 object PXML {
   /** The pattern to search for when searching for the end of a PXML file in a binary */
-  final val BinaryStartPattern = "<PXML"
+  final val BinaryStartPattern = "<PXML".getBytes("UTF-8")
 
   /** The pattern to look for when searching for the end of a PXML file in a binary */
-  final val BinaryEndPattern = "</PXML>"
+  final val BinaryEndPattern = "</PXML>".getBytes("UTF-8")
 
   /** Load a PXML from the specified byte array containing PND data */
-  def fromPND(data: Array[Byte]): PXML = PXML(new PND(data).PXMLdata)
+  def fromPND(data: Array[Byte]): Box[PXML] = fromPND(new PND(data))
 
   /** Load a PXML from the specified PND */
-  def fromPND(pnd: PND): PXML = PXML(pnd.PXMLdata)
+  def fromPND(pnd: PND): Box[PXML] = try { 
+    pnd.PXMLdata.map(x => PXML(x))
+  } catch {case ex => Failure(ex.getMessage)}
 
   /** All available locales on this platform (this is 99% of the time all of the ISO locales) */
   final lazy val availableLocales = java.util.Locale.getAvailableLocales.map(_.toString)
@@ -23,20 +26,11 @@ object PXML {
   def validLocale(loc: String) = availableLocales.contains(loc)
 
   /** The UID must match this to qualify as valid */
-  val idRegex = """[-_a-z0-9\.]+"""
-
-  /** All the errors that the UID field can have */
-  def idFieldErrors(field: FieldIdentifier) = List(FieldError(field,
-    Text("The PXML has an invalid unique ID. It must match the regex \"" +
-         idRegex + "\"."))) //TODO: translate!
-
-  /** All the errors that the version field can have */
-  def versionFieldErrors(field: FieldIdentifier) = List(FieldError(field,
-    Text("The PXML has an invalid version number. The version number must " +
-         "consist of 4 semi-positive integers, nothing else."))) //TODO: translate!
+  val idRegex = """[-_a-z0-9]+"""
 
   def apply(pnd: PND) = fromPND(pnd)
 
+  /** An empty PXML that lacks entries for all the fields */
   object Empty extends PXML(<PXML></PXML>)
 }
 
@@ -44,7 +38,7 @@ object PXML {
  * A simple DOM tool for PXML files
  */
 case class PXML(val tree: Elem) {
-  require(tree.label == "PXML", "The loaded tree is not a PXML tree!") //TODO: translate!
+  require(tree.label == "PXML", "This isn't a PXML file!") //TODO: translate!
   import PXML._
 
   /** Utility method for field accessors below */
@@ -59,23 +53,28 @@ case class PXML(val tree: Elem) {
   }
 
   /** Returns a list of FieldErrors with all the version field issues */
-  def validateVersion(field: FieldIdentifier) = versionFieldErrors(field) filter
-    (_ => !rawVersionStrings.forall(_ match {
+  def validateVersion() = rawVersionStrings.foreach(_ match {
       //fail if the string is empty
-      case null | "" => false
+      case null | "" => error("The version number is invalid: one field is empty!") //TODO: translate!
       //otherwise, check if it can be converted to an int and is positive
-      case s => try { s.toInt >= 0 } catch { case _ => false }
-    }))
+      case s => try { s.toInt >= 0 } catch { 
+          case _ => error("The version number is invalid: one field contains non-integer or negative data!") //TODO: translate!
+        }
+    })
 
   /** Returns a list of FieldErrors with all the UniqueID issues */
-  def validateId(field: FieldIdentifier) = idFieldErrors(field) filter (_ => !(id matches idRegex))
+  def validateId() = if (!(id matches idRegex))
+    error("The PXML has an invalid unique ID. It must match the regex \"" +
+          idRegex + "\".") //TODO: translate!
 
   /** Returns a list of FieldErrors with all the errors that this PXML has >:-) */
-  def validateAll(field: FieldIdentifier) =
-    validateId(field) ::: validateVersion(field)
+  def validateAll(field: FieldIdentifier) = {
+    validateId()
+    validateVersion()
+  }
   
   /** The unique ID field */
-  def id: String = (tree \ "@id").text.replace(".", "_") //TODO: remove this hack
+  def id: String = (tree \ "@id").text.replace(".", "_") //TODO: remove this hack if deemed necessary
 
   /** A list of localized description fields */
   def description = loadLocalizedStringField("description")
