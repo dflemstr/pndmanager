@@ -58,7 +58,19 @@ class Boot {
   
   private def buildSiteMap() = {
     val userMenu = Menu(Loc("userInfo", List("user", "index"), "User"), User.sitemap: _*)
-    val packageMenu = Menu(Loc("packageInfo", List("packages", "index"), "Packages"))
+
+    val pkgAdd = List("packages","add")
+    val pkgEdit = List("packages", "edit")
+    val pkgDelete = List("packages", "delete")
+    val pkgView = List("packages", "view")
+    val pkgList = List("packages", "list")
+    val packageMenu = Menu(Loc("packageInfo", List("packages", "index"), "Packages"),
+                           Package.listMenu(pkgList, pkgEdit, pkgView, pkgDelete, "Package.list").open_!,
+                           Package.addMenu(pkgAdd, "Package.addForm").open_!,
+                           Package.editMenu(pkgEdit, "Package.editForm").open_!,
+                           Package.deleteMenu(pkgDelete, "Package.deleteForm").open_!,
+                           Package.viewMenu(pkgView, "Package.view").open_!)
+
     val entries = Menu(Loc("home", List("index"), "Home")) ::
       packageMenu :: userMenu :: Nil
 

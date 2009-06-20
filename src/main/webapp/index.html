@@ -1,7 +1,7 @@
 <lift:surround with="default" at="content">
     <lift:User.checkIfNameUnchanged>
         Your nickname is currently unchanged. Please go to the
-        <lift:menu.item name="EditUser">edit user</lift:menu.item> page to change it.
+        <lift:menu.item name="user.edit">edit user</lift:menu.item> page to change it.
     </lift:User.checkIfNameUnchanged>
     <p>
         Welcome to the online PND package manager!<br/>
@@ -11,7 +11,7 @@
     <lift:User.offline>
         <p>
             The manager only allows the editing of packages for logged-in
-            users. Please <lift:menu.item name="Login">log in</lift:menu.item>
+            users. Please <lift:menu.item name="user.login">log in</lift:menu.item>
             to make your session interactive.
         </p>
         <p>
@@ -21,7 +21,8 @@
             get an OpenID account from a provider. You most likely already have
             an OpenID account if you use some of the big social media sites
             (get more information <a href="http://openid.net/get/">here</a>); otherwise,
-            you can get an OpenID from for example <a href="http://claimid.com/">claimID</a>.
+            you can get an OpenID from for example <a href="http://claimid.com/">claimID</a><br/>
+            (<em>note</em>: do some research, claimID might not be the best solution for you).
         </p>
     </lift:User.offline>
     <p>

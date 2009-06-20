@@ -1,0 +1,28 @@
+<lift:surround with="default" at="content">
+    <p>
+        Do you really, <em>really</em> want to delete this package?<br/>
+        It will be removed instantly, and noone will be able
+        to access it ever again.
+    </p>
+    <p>
+        Here's a list of what the package cotnains, just to confirm:
+    </p>
+    <lift:Package.deleteForm form="POST">
+        <table>
+            <tbody>
+                <form:entry>
+                    <tr>
+                        <td><entry:name/></td>
+                        <td><entry:value/></td>
+                    </tr>
+                </form:entry>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td> </td>
+                    <td><form:submit>Delete it already!</form:submit></td>
+                </tr>
+            </tfoot>
+        </table>
+    </lift:Package.deleteForm>
+</lift:surround>

@@ -1,20 +1,25 @@
 <lift:surround with="default" at="content">
     <lift:User.loginForm form="POST">
-      <table>
-        <tr>
-          <td>Your <lift:OpenID.link>OpenID</lift:OpenID.link>:</td>
-          <td><user:openid /></td>
-        </tr>
-        <tr>
-          <td>&nbsp;</td>
-          <td>
-              An OpenID is typically an URL of some kind, like for example
-              <em>http://claimid.com/username</em>.
-          </td>
-        </tr>
-        <tr>
-          <td>&nbsp;</td><td><user:submit /></td>
-        </tr>
-      </table>
+        <table>
+            <tbody>
+                <tr>
+                    <td>Your <lift:OpenID.link>OpenID</lift:OpenID.link>:</td>
+                <td><user:openid /></td>
+                </tr>
+                <tr>
+                    <td> </td>
+                    <td>
+                        An OpenID is typically an URL of some kind, like for example
+                        <em>http://claimid.com/username</em>.
+                    </td>
+                </tr>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td> </td>
+                    <td><user:submit /></td>
+                </tr>
+            </tfoot>
+        </table>
     </lift:User.loginForm>
 </lift:surround>

@@ -6,6 +6,7 @@ import _root_.java.text.DateFormat
 import _root_.scala.xml._
 
 import _root_.net.liftweb._
+import java.lang.reflect.Method
 import sitemap._
 import Loc._
 import mapper._
@@ -16,26 +17,29 @@ import Helpers._
 import _root_.se.dflemstr.pndmanager.util._
 
 object Package extends Package with LongKeyedMetaMapper[Package] {
-  //for the database:
-  override def fieldOrder = List(name, version, owner, createdOn, pndFile)
+  //--> for the database:
+  override def fieldOrder = List(name, version, owner, updatedOn, pndFile)
   override def dbTableName = "packages"
 
-  //for the actual usage of entries:
-  def allEntries: List[Entry] =
-    List(title, name, version, description, owner, createdOn, pndFile)
+  //--> for the display system:
+  object displayItemsPerPage extends SessionVar[Int](20)
+
+  //--> for the internals of Package:
 
   //A condition for menus that requires a user to be logged in;
   //otherwise it redirects the visitor to the log in page
   private def userAuthorization = If(User.loggedIn_? _, () => RedirectResponse(User.loginPageURL))
 
   //Check if the current user is allowed to change a package
-  private def mutablePackage_?(p: Package) =
-    User.loggedIn_? &&
-      (p.owner == (User.currentUser openOr 0l) || (User.currentUser.map(_.superUser.is) openOr false))
+  private def mutablePackage_?(p: Package) = try {
+      User.loggedIn_? &&
+        (p.owner == (User.currentUser openOr 0l) || (User.currentUser.map(_.superUser.is) openOr false))
+    } catch {case _ => false}
 
   //A validation for MappedFields for checking if a date is in the future
   private def notInFuture(field: MappedDateTime[Package])(date: Date) =
-    List(FieldError(field, Text(S.?("future.package"))))
+    List(FieldError(field, Text("Fatal: We tried to create the package in the future." +
+                                "Don't ask how that happened, neither we nor you want to know."))) //TODO: translate!
       .filter(_ => date.getTime >= System.currentTimeMillis)
 
   //Converts a date to HTML, automatically using the logged-in user's preferences
@@ -43,7 +47,7 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
     val formatter = DateFormat.getDateInstance(DateFormat.LONG, S.locale)
     formatter.setTimeZone(S.timeZone)
 
-    scala.xml.Text(formatter.format(date))
+    try {Text(formatter.format(date))} catch { case _ => <em>Corrupted</em>} //TODO: translate!
   }
 
   private def makeForm(pkg: Package, submitMsg: String)(template: NodeSeq) = {
@@ -51,7 +55,7 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
     val thisSnippet = S.currentSnippet
 
     def makePage(html: NodeSeq): NodeSeq = {
-      def makeFields(temp: NodeSeq): NodeSeq = (for {
+      def doEntries(temp: NodeSeq): NodeSeq = (for {
           entry <- allEntries
           if(entry match {
               case x: Editable => true
@@ -59,7 +63,7 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
             })
 
           instanceField = getActualBaseField(pkg, entry.asInstanceOf[Editable])
-        } yield bind("field", html,
+        } yield bind("entry", temp,
                      "name" -> instanceField.displayHtml,
                      "input" -> instanceField.toForm)).flatMap(x => x) //I like one-liners...
 
@@ -74,26 +78,101 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
       }
 
       bind("form", html,
-           "field" -> ((x: NodeSeq) => makeFields(x)),
+           "entry" -> doEntries _,
            "submit"-> ((x: NodeSeq) => SHtml.submit(x.text, onSubmit _)))
     }
 
     makePage(template)
   }
 
-  def obscurePrimaryKey(in: Package): String = obscurePrimaryKey(in.primaryKeyField.toString)
-  def obscurePrimaryKey(in: String): String = in
+  private def findForList(start: Long, count: Int): List[Package] =
+    findAll(StartAt[Package](start) :: MaxRows[Package](count) ::
+            findForListParams :_*)
 
-  def add(template: NodeSeq) = makeForm(create, "Add") _ //TODO: translate!
-  def addMenuLoc(path: List[String]): Box[Menu] =
-    Full(Menu(Loc("package.create", path, "Upload new Package"))) //TODO: translate!
+  private def findForListParams: List[QueryParam[Package]] =
+    List(OrderBy(primaryKeyField, Ascending))
 
-  def editMenuLoc(path: List[String], snippetName: String): Box[Menu] =
+  private def locSnippets(listPath: List[String], editPath: List[String],
+                          viewPath: List[String], deletePath: List[String],
+                          snippetName: String) = new DispatchLocSnippets {
+    def s(path: List[String]) = path.mkString("/", "/", "")
+    val listPathString = s(listPath)
+    val editPathString = s(editPath)
+    val viewPathString = s(viewPath)
+    val deletePathString = s(deletePath)
+
+    val dispatch: PartialFunction[String, NodeSeq => NodeSeq] = {
+      case `snippetName` => doList
+    }
+
+    def doList(in: NodeSeq): NodeSeq = {
+      val itemsPerPage: Int = displayItemsPerPage
+      val first = S.param("first").map(toLong) openOr 0L
+      val list = findForList(first, itemsPerPage + 1)
+      def entries(p: Package) = p.allEntries.filter(_ match {
+          case x: Visible if (x.isVisibleIn(Appearance.Summary)) => true
+          case _ => false
+        }).map(_.asInstanceOf[Visible])
+
+      def prev(in: NodeSeq): NodeSeq =
+        if(first < itemsPerPage + 1)
+          Nil
+        else
+          <a href={listPathString+"?first="+(0L max (first - displayItemsPerPage.toLong))}>{in}</a>
+
+      def next(in: NodeSeq): NodeSeq =
+        if (list.length < itemsPerPage + 1)
+          Nil
+        else
+          <a href={listPathString+"?first="+(first + displayItemsPerPage.toLong)}>{in}</a>
+
+      def doHeaderItems(in: NodeSeq): NodeSeq =
+        entries(Package.this).flatMap(f => bind("headeritem", in, "name" -> f.displayHtml))
+
+      def doRows(in: NodeSeq): NodeSeq =
+        list.take(itemsPerPage).flatMap {c =>
+          def doRowItems(in: NodeSeq): NodeSeq = entries(c)
+            .flatMap(f => bind("entry", in, "value" -> f.asHtml))
+
+          bind("row", in ,
+            "entry" -> doRowItems _,
+            "edit" -> ((label: NodeSeq) =>
+              if(mutablePackage_?(c))
+                <a href={editPathString+"/"+obscurePrimaryKey(c)}>{label}</a>
+              else
+                NodeSeq.Empty),
+
+            "view" -> ((label: NodeSeq) => 
+              <a href={viewPathString+"/"+obscurePrimaryKey(c)}>{label}</a>),
+
+            "delete" ->((label: NodeSeq) =>
+              if(mutablePackage_?(c))
+                <a href={deletePathString+"/"+obscurePrimaryKey(c)}>{label}</a>
+              else
+                NodeSeq.Empty)
+          )}
+
+      bind("list", in, "headeritem" -> doHeaderItems _,
+           "row" -> doRows _,
+           "prev" -> prev _, "next" -> next _)
+
+    }
+  }
+
+  private def obscurePrimaryKey(in: Package): String = obscurePrimaryKey(in.primaryKeyField.toString)
+  private def obscurePrimaryKey(in: String): String = in
+
+  //--> for the Site Map:
+  def addMenu(path: List[String], snippetName: String): Box[Menu] =
+    Full(Menu(Loc("package.add", path, "Upload new Package", userAuthorization, //TODO: translate!
+                  Snippet(snippetName, makeForm(create, "The package was successfully added!") _)))) //TODO: translate!
+
+  def editMenu(path: List[String], snippetName: String): Box[Menu] =
     Full(Menu(new Loc[Package] {
       def name = "package.edit"
 
       override val snippets: SnippetTest = {
-        case (snippetName, Full(p: Package)) => makeForm(p, "Package edited") _ //TODO: translate!
+        case (`snippetName`, Full(p: Package)) => makeForm(p, "Package successfully edited") _ //TODO: translate!
       }
 
       def defaultParams = Empty
@@ -102,14 +181,15 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
 
       val text = new Loc.LinkText(calcLinkText _)
 
-      def calcLinkText(in: Package): NodeSeq = Text("Edit") //TODO: translate!
+      def calcLinkText(in: Package): NodeSeq = Text("Edit Package") //TODO: translate!
 
       override val rewrite: LocRewrite =
         Full(NamedPF(name) {
           case RewriteRequest(pp , _, _)
             if pp.wholePath.startsWith(path) &&
             pp.wholePath.length == (path.length + 1) &&
-            find(pp.wholePath.last).isDefined =>
+            find(pp.wholePath.last).isDefined &&
+            mutablePackage_?(find(pp.wholePath.last) openOr null)=>
               (RewriteResponse(path), find(pp.wholePath.last).open_!)
         })
 
@@ -120,9 +200,9 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
         }
     }))
     
-  def viewMenuLoc(path: List[String], snippetName: String): Box[Menu] =
+  def viewMenu(path: List[String], snippetName: String): Box[Menu] =
     Full(Menu(new Loc[Package] {
-      def name = "View Package" //TODO: translate!
+      def name = "package.view"
 
       override val snippets: SnippetTest = {
         case (snippetName, Full(p: Package)) => displayPackage(p) _
@@ -134,7 +214,7 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
 
       val text = new Loc.LinkText(calcLinkText _)
 
-      def calcLinkText(in: Package): NodeSeq = Text("View") //TODO: translate!
+      def calcLinkText(in: Package): NodeSeq = Text("View Package") //TODO: translate!
 
       override val rewrite: LocRewrite =
         Full(NamedPF(name) {
@@ -146,18 +226,18 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
         })
 
       def displayPackage(entry: Package)(in: NodeSeq): NodeSeq = {
-        def doItems(in: NodeSeq): NodeSeq =
-          allEntries.map(_ match {
+        def doEntries(in: NodeSeq): NodeSeq =
+          entry.allEntries.map(_ match {
             case v: Visible =>
-              if(v.isVisibleIn(Appearance.Summary))
-                bind("item", in, "name" -> v.displayHtml, "value" -> v.asHtml)
+              if(v.isVisibleIn(Appearance.Detail))
+                bind("entry", in, "name" -> v.displayHtml, "value" -> v.asHtml)
               else
                 Nil
 
             case _ => Nil
           }).flatMap(x => x)
 
-        bind("list", in, "item" -> doItems _)
+        bind("list", in, "entry" -> doEntries _)
       }
 
       val link =
@@ -167,41 +247,95 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
         }
     }))
 
-  def list(template: NodeSeq) = {
+  def listMenu(path: List[String], editPath: List[String],
+               viewPath: List[String], deletePath: List[String],
+               snippetName: String): Box[Menu] =
+    Full(Menu(Loc("package.browse", path, "Browse Packages", //TODO: translate!
+                  locSnippets(path, editPath, viewPath, deletePath, snippetName))))
 
-  }
+  def deleteMenu(path: List[String], snippetName: String): Box[Menu] = Full(Menu(new Loc[Package] {
+      def name = "package.delete"
 
-  def delete(template: NodeSeq) = {
-    
-  }
+      override val snippets: SnippetTest = {
+        case (`snippetName`, Full(p: Package)) => deletePackage(p) _
+      }
+
+      def deletePackage(pkg: Package)(html: NodeSeq): NodeSeq = {
+        val origin = S.referer openOr "/"
+
+        def doEntries(in: NodeSeq): NodeSeq = allEntries.map(_ match {
+            case v: Visible =>
+              if(v.isVisibleIn(Appearance.Detail))
+                bind("entry", in, "name" -> v.displayHtml, "value" -> v.asHtml)
+              else
+                Nil
+            case _ => Nil
+          }).flatMap(x => x)
+
+        def doSubmit() = {
+          pkg.delete_!
+          S.notice("The package was deleted.") //TODO: translate!
+          S.redirectTo(origin)
+        }
+
+        bind("form", html,
+          "entry" -> doEntries _,
+          "submit" -> ((text: NodeSeq) => SHtml.submit(text.text, doSubmit _)))
+      }
+
+      def defaultParams = Empty
+      def params = Nil
+
+      def text = new Loc.LinkText(calcLinkText _)
+      def calcLinkText(in: Package) = Text("Delete") //TODO: translate!
+
+      override val rewrite: LocRewrite =
+        Full(NamedPF(name) {
+            case RewriteRequest(pp , _, _)
+              if pp.wholePath.startsWith(path) &&
+              pp.wholePath.length == (path.length + 1) &&
+              find(pp.wholePath.last).isDefined &&
+              mutablePackage_?(find(pp.wholePath.last) openOr null) =>
+                (RewriteResponse(path), find(pp.wholePath.last).open_!)
+          })
+
+      val link = new Loc.Link[Package](path, false) {
+        override def createLink(in: Package) =
+          Full(Text(path.mkString("/", "/", "") + "/" + obscurePrimaryKey(in)))
+      }
+    }))
 }
 
 class Package extends LongKeyedMapper[Package] with IdPK {
   import Package._
-  
+
+  //This should actually be in the Meta singleton, but I don't want to use reflection
+  def allEntries: List[Entry] =
+    List(title, name, version, description, owner, updatedOn, pndFile)
+    
   def getSingleton = Package
     
   def downloadLoc = Loc("package-" + name.is + "-" + version.is,
                         List("package", name.is + "-" + version.toHumanReadable + ".pnd"), "Download") //TODO: translate
 
   object owner extends MappedLongForeignKey(this, User) with ShowInSummary {
-    override def displayName = S.?("owner")
+    override def displayName = "Owner" //TODO: translate!
     override def asHtml = Text(User.findByKey(is).map(_.nickname.is) openOr "Unknown") //TODO: translate!
   }
 
-  object createdOn extends MappedDateTime(this) with ShowInDetail {
-    override def displayName = S.?("created")
+  object updatedOn extends MappedDateTime(this) with ShowInDetail {
+    override def displayName = "Updated" //TODO: translate!
     override def validations = super.validations ::: List(notInFuture(this) _)
     override def asHtml = dateAsHtml(is)
   }
 
   object pndFile extends MappedBinary(this) with Editable with ShowInDigest {
-    override def displayName = S.?("pnd.file")
+    override def displayName = "PND File"
     override def validations = notZeroSize _ :: containsPXML _ :: super.validations
 
     def notZeroSize(data: Array[Byte]) =
       List(FieldError(this, Text("The PND file didn't contain anything at all!"))) //TODO: translate!
-        .filter(_ => data.length == 0)
+        .filter(_ => data == null || data.length == 0)
 
     //the second tuple element here contains List[FieldError]
     def containsPXML(data: Array[Byte]) = try {
@@ -214,11 +348,11 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     def storeTheFile(file: FileParamHolder) =
       set(file.file) //store the binary information of the file
       
-    override def asHtml = <a href={downloadLoc.createLink(NullLocParams)}>{downloadLoc.linkText openOr "Download"}</a>
+    override def asHtml = <a href={downloadLoc.createLink(NullLocParams)}>{downloadLoc.linkText openOr "Download"}</a> //TODO: translate!
   }
 
   object name extends MappedString(this, 64) with ShowInDigest {
-    override def displayName = S.?("name")
+    override def displayName = "Name" //TODO: translate!
 
     override def dbIndexed_? = true
   }
@@ -271,7 +405,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
       (localized, en_US) match {
         case (Some(descr), _) => Text(descr.string)
         case (None, Some(descr)) => Text(descr.string)
-        case (None, None) => <em>(No translation found for {S.locale})</em> //TODO: translate!
+        case (None, None) => <em>({"No translation found for %locale%" replace ("%locale%", S.locale.toString)})</em> //TODO: translate!
       }
     }
   }
@@ -289,7 +423,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
       (localized, en_US) match {
         case (Some(title), _) => Text(title.string)
         case (None, Some(title)) => Text(title.string)
-        case (None, None) => <em>(No translation found for {S.locale})</em> //TODO: translate!
+        case (None, None) => <em>({"No translation found for %locale%" replace ("%locale%", S.locale.toString)})</em> //TODO: translate!
       }
     }
   }
@@ -303,6 +437,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
       this.save //just so that we get an ID; neccessary for associating localized strings
       try {
         val pxml = PXML.fromPND(pndFile.is).open_! //throw an exception; we don't care here
+        Log.info(pxml.tree)
 
         pxml.validateId() //throws exceptions with explanations
         name(pxml.id)
@@ -324,10 +459,13 @@ class Package extends LongKeyedMapper[Package] with IdPK {
         pxml.title.foreach(t => LocalizedPackageTitle
                            .create.owner(this).string(t._1).locale(t._2).save)
 
+        owner(User.currentUser)
+        updatedOn(new Date())
+
         Nil
       } catch {
         //If we get errors, clean up and report browser-friendly errors
-        case e => {this.delete_!; List(FieldError(this.pndFile, Text(e.getLocalizedMessage)))}
+        case e => {this.delete_!; List(FieldError(this.pndFile, Text(e.getMessage)))}
       }
     case error => error //if the PND itself was erroneous, then step out instantly
   }

@@ -1,6 +1,12 @@
 <lift:surround with="default" at="content">
-    <lift:Package.addForm form="POST" multipart="true">
+    <lift:Package.editForm form="POST" multipart="true">
         <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
             <tbody>
                 <form:entry>
                     <tr>
@@ -12,9 +18,9 @@
             <tfoot>
                 <tr>
                     <td> </td>
-                    <td><form:submit>Upload</form:submit></td>
+                    <td><form:submit>Edit</form:submit></td>
                 </tr>
             </tfoot>
         </table>
-    </lift:Package.addForm>
+    </lift:Package.editForm>
 </lift:surround>

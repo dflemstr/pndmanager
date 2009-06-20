@@ -55,7 +55,7 @@ case class PXML(val tree: Elem) {
   /** Returns a list of FieldErrors with all the version field issues */
   def validateVersion() = rawVersionStrings.foreach(_ match {
       //fail if the string is empty
-      case null | "" => error("The version number is invalid: one field is empty!") //TODO: translate!
+      case null | "" => error("The version number is invalid: at least one field is empty!") //TODO: translate!
       //otherwise, check if it can be converted to an int and is positive
       case s => try { s.toInt >= 0 } catch { 
           case _ => error("The version number is invalid: one field contains non-integer or negative data!") //TODO: translate!

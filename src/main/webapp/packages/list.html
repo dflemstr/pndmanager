@@ -1,0 +1,34 @@
+<lift:surround with="default" at="content">
+    <lift:Package.list>
+        <table>
+            <thead>
+                <tr>
+                    <list:headeritem>
+                        <th><headeritem:name/></th>
+                    </list:headeritem>
+                    <th> </th>
+                    <th> </th>
+                    <th> </th>
+                </tr>
+            </thead>
+            <tbody>
+                <list:row>
+                    <tr>
+                        <row:entry>
+                            <td><entry:value/></td>
+                        </row:entry>
+                        <td><row:view>Details</row:view></td>
+                        <td><row:edit>Edit</row:edit></td>
+                        <td><row:delete>Delete</row:delete></td>
+                    </tr>
+                </list:row>
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3"><list:prev>Previous page</list:prev></td>
+                    <td colspan="3"><list:next>Next page</list:next></td>
+                </tr>
+            </tfoot>
+        </table>
+    </lift:Package.list>
+</lift:surround>
