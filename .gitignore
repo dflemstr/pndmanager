@@ -16,3 +16,6 @@ derby.log
 .classpath
 .project
 
+# Ignore random stuff
+.manager/*
+profiles.xml

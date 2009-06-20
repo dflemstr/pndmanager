@@ -63,7 +63,7 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
                      "name" -> instanceField.displayHtml,
                      "input" -> instanceField.toForm)).flatMap(x => x) //I like one-liners...
 
-      def onSubmit() = pkg.doCreationProcess() match {
+      def onSubmit() = pkg.doUpdateProcess() match {
         case Nil =>
           pkg.save
           if(submitMsg != "") S.notice(submitMsg)
@@ -184,7 +184,6 @@ class Package extends LongKeyedMapper[Package] with IdPK {
   def downloadLoc = Loc("package-" + name.is + "-" + version.is,
                         List("package", name.is + "-" + version.toHumanReadable + ".pnd"), "Download") //TODO: translate
 
-  //The package owner/maintainer; NOT the author!
   object owner extends MappedLongForeignKey(this, User) with ShowInSummary {
     override def displayName = S.?("owner")
     override def asHtml = Text(User.findByKey(is).map(_.nickname.is) openOr "Unknown") //TODO: translate!
@@ -299,7 +298,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
    * Reads the pndFile field and populates all the other fields and entries with
    * acquired information.
    */
-  def doCreationProcess(): List[FieldError] = pndFile.validate match {
+  def doUpdateProcess(): List[FieldError] = pndFile.validate match {
     case Nil =>
       this.save //just so that we get an ID; neccessary for associating localized strings
       try {
@@ -376,6 +375,7 @@ trait ShowInDetail extends Visible {
 }
 
 /** Use a custom method to determine if the field is visible */
-case class Custom(val cond: () => Boolean) extends Visible {
-  def isVisibleIn(app: Appearance.Value) = cond()
+trait Custom extends Visible {
+  def isVisibleIn(app: Appearance.Value) = cond
+  def cond: Boolean
 }

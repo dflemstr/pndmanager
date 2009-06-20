@@ -11,8 +11,8 @@ object FileDispatcher {
   val dispatcher: PartialFunction[Req, () => Box[LiftResponse]] = {
     //The following suffix hack is require dbecause Lift likes to mess with me
     case Req("package" :: name :: Nil, suffix, GetRequest) => 
-      () => suffix match {
-        case "" | null =>pndFile(name)
+      () => suffix match { //there are more elegant ways to do this but this is the shortest
+        case "" | null => pndFile(name)
         case s => pndFile(name + "." + suffix)
       }
   }
@@ -35,13 +35,13 @@ object FileDispatcher {
       val actualName = (nameParts take (nameParts.length - 1)).mkString("")
       val version = makeVersion(versionString.split('.').toList)
 
-      (Package.find(
+      Package.find(
           By(Package.name, actualName),
-          By(Package.version, Package.version.valueFromTuple(version))): @unchecked) match {
+          By(Package.version, Package.version.valueFromTuple(version))) match {
         case Full(p) =>
           Full(InMemoryResponse(p.pndFile,
                                 ("Content-Type" -> "application/x-pandora-pnd") :: Nil, Nil, 200))
-        case Empty => Empty
+        case _ => Empty
       }
     }
     else
