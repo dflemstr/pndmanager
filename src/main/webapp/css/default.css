@@ -60,5 +60,27 @@ p {
 }
 
 .witharrow {
-   background: url(../images/menu.gif) 8px 0.2em no-repeat;
+    background: url(../images/menu.gif) 8px 0.2em no-repeat;
+}
+
+.thumbnail, .screenshot {
+    text-align: center;
+    border: thin solid gray;
+}
+
+.nothumbnail {
+    line-height: 75px;
+}
+
+.noscreenshot {
+    line-height: 150px;
+}
+
+.buttoncell {
+    width: 16px;
+}
+
+.downloadlink {
+    background: url(../images/download.png) left center no-repeat;
+    padding-left: 16px;
 }

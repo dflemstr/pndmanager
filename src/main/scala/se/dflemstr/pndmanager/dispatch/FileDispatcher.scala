@@ -15,6 +15,8 @@ object FileDispatcher {
         case "" | null => pndFile(name)
         case s => pndFile(name + "." + suffix)
       }
+    case Req("screenshot" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined => () => screenshot(id)
+    case Req("thumbnail" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined => () => thumbnail(id)
   }
 
   protected def makeVersion(strings: List[String]) = {
@@ -23,6 +25,16 @@ object FileDispatcher {
         case n => try {n.toInt} catch {case _ => 0}
       })
     (ver(0), ver(1), ver(2), ver(3))
+  }
+
+  private def screenshot(id: String): Box[LiftResponse] = {
+    val thePackage = Package.find(id).open_!
+    Full(InMemoryResponse(thePackage.screenshot, ("Content-Type" -> "image/png") :: Nil, Nil, 200))
+  }
+
+  private def thumbnail(id: String): Box[LiftResponse] = {
+    val thePackage = Package.find(id).open_!
+    Full(InMemoryResponse(thePackage.thumbnail, ("Content-Type" -> "image/png") :: Nil, Nil, 200))
   }
 
   def pndFile(identifier: String): Box[LiftResponse] = {

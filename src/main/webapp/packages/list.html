@@ -1,34 +1,39 @@
 <lift:surround with="default" at="content">
-    <lift:Package.list>
-        <table>
-            <thead>
-                <tr>
-                    <list:headeritem>
-                        <th><headeritem:name/></th>
-                    </list:headeritem>
-                    <th> </th>
-                    <th> </th>
-                    <th> </th>
-                </tr>
-            </thead>
-            <tbody>
-                <list:row>
+    <lift:Package.list table_container_id="packagelist">
+        <div id="packagelist">
+            <div><list:showDetail/>Show more information</div>
+            <table>
+                <thead>
                     <tr>
-                        <row:entry>
-                            <td><entry:value/></td>
-                        </row:entry>
-                        <td><row:view>Details</row:view></td>
-                        <td><row:edit>Edit</row:edit></td>
-                        <td><row:delete>Delete</row:delete></td>
+                        <list:headeritem>
+                            <th><headeritem:name/></th>
+                        </list:headeritem>
+                        <th> </th>
+                        <th> </th>
                     </tr>
-                </list:row>
-            </tbody>
-            <tfoot>
-                <tr>
-                    <td colspan="3"><list:prev>Previous page</list:prev></td>
-                    <td colspan="3"><list:next>Next page</list:next></td>
-                </tr>
-            </tfoot>
-        </table>
+                </thead>
+                <tbody>
+                    <list:row>
+                        <tr>
+                            <row:entry>
+                                <td><entry:value/></td>
+                            </row:entry>
+                            <td class="buttoncell">
+                                <row:view><img src="../images/details.png" alt="Details"/></row:view>
+                            </td>
+                            <td class="buttoncell">
+                                <row:delete><img src="../images/delete.png" alt="Delete"/></row:delete>
+                            </td>
+                        </tr>
+                    </list:row>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3"><list:prev>Previous page</list:prev></td>
+                        <td colspan="3"><list:next>Next page</list:next></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
     </lift:Package.list>
 </lift:surround>

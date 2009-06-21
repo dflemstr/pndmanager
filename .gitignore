@@ -19,3 +19,4 @@ derby.log
 # Ignore random stuff
 .manager/*
 profiles.xml
+.directory
