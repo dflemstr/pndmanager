@@ -21,7 +21,7 @@ $(document).ready(function() {
     if(pageSwitched())
     {
         $(".selectedmenu ul").hide();
-        $(".selectedmenu span").css("padding-left", "10px");
+        $(".selectedmenu span").css("padding-left", "5px");
         revealCurrentMenu();
     }
 
@@ -33,7 +33,7 @@ function revealCurrentMenu() {
     $(".selectedmenu span")
         .stop()
         .animate({
-            paddingLeft: "20px"
+            paddingLeft: "15px"
         }, "fast", function() {
                 $(this).addClass("witharrow");
             });
@@ -49,7 +49,7 @@ function retractCurrentMenu() {
     $(".selectedmenu span")
         .stop()
         .animate({
-            paddingLeft: "10px"
+            paddingLeft: "5px"
         }, "fast").removeClass("witharrow");
 }
 

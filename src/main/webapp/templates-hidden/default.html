@@ -18,22 +18,21 @@
     </head>
     <body>
         <div class="container">
-            <div class="column span-24 last header">
+            <div class="column span-24 last page-header">
                 <h1 class="alt" style="text-align: left;">PND package manager</h1>
             </div>
 
             <hr/>
 
             <div class="column span-6 colborder sidebar">
-                <div id="ajax-loader" class="quiet" style="display: none;">
-                    <img id="ajax-image" src="/images/ajax-loader.gif" alt=""/>
-                    <span>Loading...</span>
-                    <hr class="space" />
-                </div>
                 <lift:Menu.builder
                     xmlns:li_item="http://liftweb.net/li_item"
                     li:class="menuitem boxed"
                     li_item:class="selectedmenu boxed" />
+                <div id="ajax-loader" class="quiet" style="display: none;">
+                    <img id="ajax-image" src="/images/ajax-loader.gif" alt=""/>
+                    <span>Loading...</span>
+                </div>
             </div>
 
             <div class="column span-17 last">

@@ -9,5 +9,5 @@ object LocalizedPackageTitle extends LocalizedPackageTitle with LongKeyedMetaMap
 
 class LocalizedPackageTitle extends LocalizedString[LocalizedPackageTitle] with OwnerField with IdPK {
   def getSingleton = LocalizedPackageTitle
-  val maxLength = 256 //the max title length
+  val maxLength = 64 //the max title length
 }

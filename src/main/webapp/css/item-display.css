@@ -1,0 +1,171 @@
+/*
+ * CSS file for pages that deal with displaying package entries
+ */
+
+/* All display modes and "view" */
+.thumbnail, .screenshot {
+    text-align: center;
+    border: thin solid gray;
+}
+
+.nothumbnail {
+    line-height: 75px;
+}
+
+.noscreenshot {
+    line-height: 150px;
+}
+
+.buttoncontainer {
+    width: 16px;
+}
+
+.downloadlink {
+    background: url(../images/download.png) left center no-repeat;
+    padding-left: 16px;
+}
+
+.header {
+    padding-left: 12px;
+}
+
+.sortable {
+    background-repeat: no-repeat;
+    background-position: left center;
+}
+
+.sortable a {
+    color: black;
+    text-decoration: none;
+}
+.sortable a:hover,
+.sortable a:focus {
+    text-decoration: underline;
+}
+
+.ascending {
+    background-image: url(../images/sort-ascending.png);
+}
+
+.descending {
+    background-image: url(../images/sort-descending.png);
+}
+
+.unsorted {
+    background-image: url(../images/sort-unsorted.png);
+}
+
+/* The rich display mode */
+
+.rich-list .header {
+    display: block;
+    position: absolute;
+}
+
+.rich-headers {
+    display: block;
+    position: relative;
+    height: 40px;
+    background: #C3D9FF none repeat scroll 0 0;
+    font-weight: bold;
+}
+
+.rich-list .header-1 { /* This is the thumbnail header */
+    top: 5px !important;
+    left: 5px;
+    margin-left: 0;
+    height: 28px;
+    width: 100px;
+    line-height: 30px;
+    text-align: center;
+    border: thin solid gray;
+    background-color: white;
+    padding: 0;
+}
+
+.rich-headers .even {
+    top: 3px;
+}
+
+.rich-headers .odd {
+    top: 20px;
+}
+
+.rich-list .header-2,
+.rich-list .header-3,
+.rich-list .entry-2,
+.rich-list .entry-3 {
+    margin-left: 115px;
+}
+
+.rich-list .header-4,
+.rich-list .header-5,
+.rich-list .entry-4,
+.rich-list .entry-5 {
+    margin-left: 255px;
+}
+
+.rich-list .header-6,
+.rich-list .header-7,
+.rich-list .entry-6,
+.rich-list .entry-7 {
+    margin-left: 395px;
+}
+
+.rich-list .row {
+    display: block;
+    height: 77px;
+    position: relative;
+    padding: 5px;
+}
+
+.rich-list .row.even {
+    background: #E5ECF9 none repeat scroll 0 0;
+}
+
+.rich-list .entry {
+    display: block;
+    width: 20%;
+    height: 37.5px;
+    line-height: 37.5px;
+    position: absolute;
+}
+
+.rich-list .entry-1 {
+    top: 5px !important;
+    left: 5px;
+}
+
+.rich-rows .entry.even,
+.rich-list .details {
+    top: 5px;
+}
+
+.rich-rows .entry.odd,
+.rich-list .delete {
+    top: 42.5px;
+}
+
+.rich-list .details,
+.rich-list .delete {
+    position: absolute;
+    display: block;
+    right: 5px;
+    width: 20%;
+    height: 37.5px;
+    line-height: 37.5px;
+    text-align: right;
+    padding-right: 18px;
+}
+.rich-list .details *,
+.rich-list .delete * {
+    display: inline;
+}
+
+.rich-list .details {
+    background: transparent url(../images/details.png) no-repeat right center;
+}
+
+.rich-list .delete {
+    background: transparent url(../images/delete.png) no-repeat right center;
+}

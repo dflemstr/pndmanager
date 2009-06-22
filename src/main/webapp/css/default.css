@@ -1,7 +1,10 @@
-
-.header {
-    text-align: right;
-    background: transparent url(../images/banner.png) center right no-repeat;
+/*
+ * CSS file for all pages
+ */
+ 
+/* Misc */
+:focus {
+    outline: none;
 }
 
 p {
@@ -14,6 +17,17 @@ p {
     background: transparent url(../images/openid-icon.png) no-repeat center left;
 }
 
+#ajax-loader {
+    margin-top: 1em;
+}
+
+/* Page header */
+.page-header {
+    text-align: right;
+    background: transparent url(../images/banner.png) center right no-repeat;
+}
+
+/* Menu */
 .boxed {
     border: 1px solid #ccc;
     padding: 3px;
@@ -44,14 +58,14 @@ p {
 .menuitem a {
     display: block;
     padding: 1px;
-    padding-left: 10px;
+    padding-left: 5px;
     text-decoration: none;
 }
 
 .selectedmenu span {
     display: block;
     padding: 1px;
-    padding-left: 20px;
+    padding-left: 15px;
     text-decoration: none;
 }
 
@@ -60,27 +74,5 @@ p {
 }
 
 .witharrow {
-    background: url(../images/menu.gif) 8px 0.2em no-repeat;
-}
-
-.thumbnail, .screenshot {
-    text-align: center;
-    border: thin solid gray;
-}
-
-.nothumbnail {
-    line-height: 75px;
-}
-
-.noscreenshot {
-    line-height: 150px;
-}
-
-.buttoncell {
-    width: 16px;
-}
-
-.downloadlink {
-    background: url(../images/download.png) left center no-repeat;
-    padding-left: 16px;
+    background: url(../images/menu.gif) center left no-repeat;
 }

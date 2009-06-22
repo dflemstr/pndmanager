@@ -38,8 +38,8 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
   object RichDisplay extends SessionVar[Boolean](false)
 
   /** Contains all the "sortings" (sort directions) for sortable entries */
-  object Sortings extends SessionVar[mutable.Map[Sortable, Option[AscOrDesc]]] (
-    mutable.Map(allEntries.filter(_.isInstanceOf[Sortable]).map(entry => (entry.asInstanceOf[Sortable], None)): _*)
+  object Sortings extends SessionVar[mutable.Map[Sortable[_], Option[AscOrDesc]]] (
+    mutable.Map(allEntries.filter(_.isInstanceOf[Sortable[_]]).map(entry => (entry.asInstanceOf[Sortable[_]], None)): _*)
   )
 
   //--> for the internals of Package:
@@ -73,6 +73,15 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
   private def checkValidity(path: ParsePath, subPath: List[String]) = 
     path.wholePath.startsWith(subPath) && path.wholePath.length == (subPath.length + 1) &&
       find(path.wholePath.last).isDefined
+
+  private def sortStatement: List[QueryParam[Package]] = {
+    val statements = (for {
+      toSort <- Sortings
+      if(toSort._2 != None)
+    } yield OrderBy(toSort._1, toSort._2 match { case Some(n) => n; case _ => null })).toList
+    Log.info(statements.toString)
+    statements
+  }
 
   private def makeForm(oldPackage: Package, submitMsg: String)(template: NodeSeq) = {
     val origin = S.referer openOr "/"
@@ -120,7 +129,7 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
                        RenderingHints.VALUE_INTERPOLATION_BICUBIC)
     g.drawImage(originalImage, 0, 0, newSize._1, newSize._2, null)
     g.dispose();
-    Log.info("An image was successfully ressized to " + newSize)
+    Log.info("An image was successfully resized to " + newSize)
     scaled
   }
 
@@ -128,8 +137,7 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
     findAll(StartAt[Package](start) :: MaxRows[Package](count) ::
             findForListParams :_*)
 
-  private def findForListParams: List[QueryParam[Package]] =
-    List(OrderBy(primaryKeyField, Ascending))
+  private def findForListParams: List[QueryParam[Package]] = sortStatement
 
   private def locSnippets(listPath: List[String], viewPath: List[String], deletePath: List[String],
                           snippetName: String) = new DispatchLocSnippets {
@@ -155,6 +163,13 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
           case _ => false
         }).map(_.asInstanceOf[Visible])
 
+
+      def countClass(name: String, count: Int) =
+        Text(name + "-" + count + " " + (if(count % 2 == 0) "even" else "odd"))
+        
+      def countClassBinder(name: String, count: Int) =
+        FuncAttrBindParam("class", _ => countClass(name, count), "class")
+
       def prev(in: NodeSeq): NodeSeq =
         if(first < itemsPerPage + 1)
           Nil
@@ -167,16 +182,47 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
         else
           <a href={listPathString+"?first="+(first + DisplayItemsPerPage.toLong)}>{in}</a>
 
-      def doHeaderItems(in: NodeSeq): NodeSeq =
-        entries(Package.this).flatMap(f => bind("headeritem", in, "name" -> f.displayHtml))
+      def doHeaderItems(redraw: () => JsCmd)(in: NodeSeq): NodeSeq = {
+        var headerCount = 0
+        entries(Package.this).flatMap(f => {
+          headerCount += 1
+          bind("header", in,
+            "name" -> (f match {
+              case s: Sortable[_] => SHtml.a(() => {Sortings(s) match {
+                  case None => Sortings(s) = Some(Descending)
+                  case Some(Descending) => Sortings(s) = Some(Ascending)
+                  case Some(Ascending) => Sortings(s) = None
+                }; redraw()}, s.displayHtml)
+              case _ => f.displayHtml
+            }),
+            FuncAttrBindParam("class", _ => Text((f match {
+              case s: Sortable[_] => Sortings(s) match {
+                case Some(Ascending) => "sortable header ascending"
+                case Some(Descending) => "sortable header descending"
+                case None => "sortable header unsorted"
+              }
+              case _ => "header"
+            }) + " " + countClass("header", headerCount)), "class")
+        )})
+      }
 
-      def doRows(in: NodeSeq): NodeSeq =
+      def doRows(in: NodeSeq): NodeSeq = {
+        var rowCount = 0
         list.take(itemsPerPage).flatMap {c =>
-          def doRowItems(in: NodeSeq): NodeSeq = entries(c)
-            .flatMap(f => bind("entry", in, "value" -> f.asHtml))
+          def doRowItems(in: NodeSeq): NodeSeq = {
+            var itemCount = 0
+            entries(c).flatMap(f => {
+              itemCount += 1
+              bind("entry", in,
+                   "value" -> f.asHtml,
+                   FuncAttrBindParam("class",_ => Text("entry " + countClass("entry", itemCount)), "class"))}
+            )
+          }
 
+          rowCount += 1
           bind("row", in ,
             "entry" -> doRowItems _,
+            FuncAttrBindParam("class", _ => Text("row " + countClass("row", rowCount)), "class"),
             "view" -> ((label: NodeSeq) => 
               <a href={viewPathString+"/"+obscurePrimaryKey(c)}>{label}</a>),
 
@@ -186,14 +232,26 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
               else
                 NodeSeq.Empty)
           )}
+      }
       val containerId = S.attr("table_container_id").open_!
 
       def inner: NodeSeq = {
-        def reDraw() = SetHtml(containerId, inner)
+        def redraw() = SetHtml(containerId, inner)
 
-        bind("list", in,
-             "showDetail" -> SHtml.ajaxCheckbox(RichDisplay, v => {RichDisplay(v); reDraw}),
-             "headeritem" -> doHeaderItems _,
+        val richified =
+          if(RichDisplay)
+            bind("list", in,
+                 "rich" -> ((x: NodeSeq) => x),
+                 "ordinary" -> Nil)
+          else
+            bind("list", in,
+                "rich" -> Nil,
+                "ordinary" -> ((x: NodeSeq) => x))
+
+
+        bind("list", richified,
+             "showDetail" -> SHtml.ajaxCheckbox(RichDisplay, v => {RichDisplay(v); redraw}),
+             "header" -> doHeaderItems(redraw _) _,
              "row" -> doRows _,
              "prev" -> prev _, "next" -> next _)
       }
@@ -325,12 +383,12 @@ class Package extends LongKeyedMapper[Package] with IdPK {
   def downloadLoc = Loc("package-" + name.is + "-" + version.is,
                         List("package", name.is + "-" + version.toHumanReadable + ".pnd"), "Download") //TODO: translate
 
-  object owner extends MappedLongForeignKey(this, User) with ShowInRichSummary with Sortable {
+  object owner extends MappedLongForeignKey(this, User) with ShowInRichSummary with Sortable[Long] {
     override def displayName = "Owner" //TODO: translate!
     override def asHtml = Text(User.findByKey(is).map(_.nickname.is) openOr "Unknown") //TODO: translate!
   }
 
-  object updatedOn extends MappedDateTime(this) with ShowInRichSummary with Sortable {
+  object updatedOn extends MappedDateTime(this) with ShowInRichSummary with Sortable[Date] {
     override def displayName = "Updated" //TODO: translate!
     override def validations = super.validations ::: List(notInFuture(this) _)
     override def asHtml = dateAsHtml(is)
@@ -358,13 +416,13 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     override def asHtml = <a href={downloadLoc.createLink(NullLocParams)} class="downloadlink">{downloadLoc.linkText openOr "Download"}</a> //TODO: translate!
   }
 
-  object name extends MappedString(this, 64) with ShowInDigest with Sortable {
+  object name extends MappedPoliteString(this, 64) with ShowInDigest with Sortable[String] {
     override def displayName = "Name" //TODO: translate!
 
     override def dbIndexed_? = true
   }
 
-  object version extends MappedString(this, 32) with ShowInDigest with Sortable {
+  object version extends MappedString(this, 32) with ShowInDigest with Sortable[String] {
     //The actual value of this is a 16 char hex string, so
     //that it becomes easy to sort versions since it can be done alphabetically
     // (And I didn't want to create a custom MappedField just for this)
@@ -496,8 +554,6 @@ class Package extends LongKeyedMapper[Package] with IdPK {
           case Failure(x, _, _) => error("Error while locating the PXML file (is your PND valid?): " + x) //TODO: translate!
         }
 
-        Log.info(pxml.tree)
-
         pxml.validateId() //throws exceptions with explanations
         name(pxml.id)
 
@@ -541,7 +597,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
 trait Entry
 
 /** Marks an entry that can be edited by the user (read/write) */
-trait Editable extends BaseOwnedMappedField[Package] with Entry with Visible
+trait Editable extends BaseOwnedMappedField [Package] with Entry with Visible
 
 /** Marks an entry that appears in various appearances (read-only) */
 trait Visible extends Entry {
@@ -550,7 +606,7 @@ trait Visible extends Entry {
   def isVisibleIn(app: Appearance.Value): Boolean
 }
 
-trait Sortable extends Editable //We need to have SQL fields to sort
+trait Sortable[T] extends MappedField[T, Package] with Entry with Visible //We need to have SQL fields to sort
 
 /** Defines the apperances that entries can be in */
 object Appearance extends Enumeration {

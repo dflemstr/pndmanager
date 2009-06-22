@@ -1,39 +1,65 @@
 <lift:surround with="default" at="content">
+    <head>
+        <link href="/css/item-display.css" rel="stylesheet" type="text/css" media="screen, print, projection"/>
+    </head>
     <lift:Package.list table_container_id="packagelist">
         <div id="packagelist">
             <div><list:showDetail/>Show more information</div>
-            <table>
-                <thead>
-                    <tr>
-                        <list:headeritem>
-                            <th><headeritem:name/></th>
-                        </list:headeritem>
-                        <th> </th>
-                        <th> </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <list:row>
+            <list:ordinary>
+                <table class="ordinary-list">
+                    <thead>
                         <tr>
-                            <row:entry>
-                                <td><entry:value/></td>
-                            </row:entry>
-                            <td class="buttoncell">
-                                <row:view><img src="../images/details.png" alt="Details"/></row:view>
-                            </td>
-                            <td class="buttoncell">
-                                <row:delete><img src="../images/delete.png" alt="Delete"/></row:delete>
-                            </td>
+                            <list:header>
+                                <th header:class=""><header:name/></th>
+                            </list:header>
+                            <th> </th>
+                            <th> </th>
                         </tr>
-                    </list:row>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="3"><list:prev>Previous page</list:prev></td>
-                        <td colspan="3"><list:next>Next page</list:next></td>
-                    </tr>
-                </tfoot>
-            </table>
+                    </thead>
+                    <tbody>
+                        <list:row>
+                            <tr row:class="">
+                                <row:entry>
+                                    <td entry:class=""><entry:value/></td>
+                                </row:entry>
+                                <td class="buttoncontainer">
+                                    <row:view><img src="../images/details.png" alt="Details"/></row:view>
+                                </td>
+                                <td class="buttoncontainer">
+                                    <row:delete><img src="../images/delete.png" alt="Delete"/></row:delete>
+                                </td>
+                            </tr>
+                        </list:row>
+                    </tbody>
+                </table>
+            </list:ordinary>
+            <list:rich>
+                <div class="rich-list">
+                    <div class="rich-headers">
+                        <list:header>
+                            <div header:class=""><header:name/></div>
+                        </list:header>
+                    </div>
+                    <div class="rich-rows">
+                        <list:row>
+                            <div row:class="">
+                                <row:entry>
+                                    <div entry:class=""><entry:value/></div>
+                                </row:entry>
+                                <div class="details">
+                                    <row:view>Details</row:view>
+                                </div>
+                                <div class="delete">
+                                    <row:delete>Delete</row:delete>
+                                </div>
+                            </div>
+                        </list:row>
+                    </div>
+                </div>
+            </list:rich>
+
+            <list:prev>Previous page</list:prev>
+            <list:next>Next page</list:next>
         </div>
     </lift:Package.list>
 </lift:surround>

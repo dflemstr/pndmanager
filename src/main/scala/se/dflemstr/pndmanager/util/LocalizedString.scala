@@ -14,5 +14,5 @@ trait LocalizedString[T <: LongKeyedMapper[T]] extends LongKeyedMapper[T] with I
   object locale extends MappedLocale[T](this)
   
   /** The localized string itself */
-  object string extends MappedString[T](this, maxLength)
+  object string extends MappedPoliteString[T](this, maxLength)
 }
