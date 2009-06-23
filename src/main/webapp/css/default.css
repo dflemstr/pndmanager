@@ -16,6 +16,12 @@ p {
     margin-top: 1.5em !important;
 }
 
+.tiny {
+    font-size: 0.5em;
+    margin: 0;
+    padding: 0;
+}
+
 .openid-url {
     padding-left: 16px;
     background: transparent url(../images/openid-icon.png) no-repeat center left;

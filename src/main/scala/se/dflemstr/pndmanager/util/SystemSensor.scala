@@ -4,6 +4,7 @@ import scala.actors._
 import net.liftweb.util._
 import net.liftweb.widgets.flot._
 import comet._
+import java.util.Date
 
 object SystemSensor extends java.lang.Runnable {
 
@@ -19,7 +20,7 @@ object SystemSensor extends java.lang.Runnable {
   override def run() : Unit = {
     while(true)
     {
-      val time = new java.util.Date().getTime
+      val time = new Date().getTime
 
       val runtime = Runtime.getRuntime
       val newMem = (runtime.totalMemory - runtime.freeMemory).toDouble
@@ -33,22 +34,23 @@ object SystemSensor extends java.lang.Runnable {
 }
 
 object DataAccumulator extends Actor {
-  val MaxData = 20;
+  val MaxData = 100;
 
   val options = new FlotOptions {
     override val xaxis = Full(new FlotAxisOptions {
       override val mode = Full("time")
     })
-
-    override val legend = Full(new FlotLegendOptions {
-      override val position = Full("ne")
-      override val margin = Full(20)
+    override val yaxis = Full(new FlotAxisOptions {
+      override val min = Full(0.0)
     })
   }
 
   private var series: List[FlotSerie] = new FlotSerie {
     override val label = Full("Memory usage + cache")
-    override val data = Nil
+    override val data = {
+      val oldtime = new Date().getTime - MaxData * 1000L
+      (0 to MaxData).toList.map(x => (oldtime + x * 1000.0, 0.0))
+    }
 
     override val lines = Full (new FlotLinesOptions () {
       override val show = Full(true)
@@ -56,7 +58,10 @@ object DataAccumulator extends Actor {
   } ::
   new FlotSerie {
     override val label = Full("Allocated memory")
-    override val data = Nil
+    override val data = {
+      val oldtime = new Date().getTime - MaxData * 1000L
+      (0 to MaxData).toList.map(x => (oldtime + x * 1000.0, 0.0))
+    }
 
     override val lines = Full (new FlotLinesOptions () {
       override val show = Full(true)
@@ -78,7 +83,7 @@ object DataAccumulator extends Actor {
         val newSeries = (series zip data).map(d =>
           new FlotSerie() {
             override val label = d._1.label
-            override val data = d._1.data.takeRight(MaxData) ::: List((time, d._2))
+            override val data = d._1.data.takeRight(MaxData - 1) ::: List((time, d._2))
           })
 
         series = newSeries.toList
