@@ -47,10 +47,7 @@ object DataAccumulator extends Actor {
 
   private var series: List[FlotSerie] = new FlotSerie {
     override val label = Full("Memory usage + cache")
-    override val data = {
-      val oldtime = new Date().getTime - MaxData * 1000L
-      (0 to MaxData).toList.map(x => (oldtime + x * 1000.0, 0.0))
-    }
+    override val data = Nil
 
     override val lines = Full (new FlotLinesOptions() {
       override val show = Full(true)
@@ -58,10 +55,7 @@ object DataAccumulator extends Actor {
   } ::
   new FlotSerie {
     override val label = Full("Allocated memory")
-    override val data = {
-      val oldtime = new Date().getTime - MaxData * 1000L
-      (0 to MaxData).toList.map(x => (oldtime + x * 1000.0, 0.0))
-    }
+    override val data = Nil
 
     override val lines = Full (new FlotLinesOptions() {
       override val show = Full(true)
@@ -83,7 +77,7 @@ object DataAccumulator extends Actor {
         val newSeries = (series zip data).map(d =>
           new FlotSerie() {
             override val label = d._1.label
-            override val data = d._1.data.takeRight(MaxData - 1) ::: List((time, d._2))
+            override val data = d._1.data.takeRight(MaxData - 1) ::: List((time, d._2)) ::: Nil
           })
 
         series = newSeries.toList
