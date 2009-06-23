@@ -42,6 +42,7 @@ class Boot {
 
   private def initDispatchers() = {
     LiftRules.dispatch.append(FileDispatcher.dispatcher)
+    LiftRules.dispatch.append(RestAPI.dispatch)
   }
   
   private def initDB() = {

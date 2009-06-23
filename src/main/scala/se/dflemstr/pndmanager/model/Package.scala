@@ -440,6 +440,22 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
 class Package extends LongKeyedMapper[Package] with IdPK {
   import Package._
 
+  def toXML =
+<package>
+  <name>{name.toString}</name>
+  <dbid>{id.toString}</dbid>
+  <pndfile>{downloadLoc.createLink(NullLocParams) match {case Some(x) => S.contextPath + x; case _ => ""}}</pndfile>
+  <updated format="gmt">{updatedOn.is.toGMTString}</updated>
+  <updated format="unix">{updatedOn.is.getTime / 1000}</updated>
+  <version format="hex-32bit">{version.toString}</version>
+  <version format="decimal">{version.toHumanReadable}</version>
+  <screenshot>{S.contextPath + "/screenshot/" + obscurePrimaryKey(this) + ".png"}</screenshot>
+  {PND(pndFile).PXMLdata openOr <PXML></PXML>}
+</package>
+
+  def toListXML = 
+    <package><name>{name.toString}</name><version format="hex-32bit">{version.toString}</version><updated format="unix">{(updatedOn.is.getTime / 1000).toString}</updated><details>{S.contextPath + "/api/package/" + obscurePrimaryKey(this) + ".xml"}</details></package>
+
   //This should actually be in the Meta singleton, but I don't want to use reflection
   def allEntries: List[Entry] =
     List(screenshot, thumbnail, title, name, category, version, description, owner, updatedOn, pndFile)
