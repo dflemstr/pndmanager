@@ -81,7 +81,7 @@ class Boot {
                            Package.viewMenu(pkgView, "Package.view").open_!)
 
     val entries = Menu(Loc("home", List("index"), "Home")) ::
-                  //Menu(Loc("stats", List("stats"), "Site statistics")) ::
+                  Menu(Loc("stats", List("stats"), "Site statistics")) ::
                   packageMenu :: userMenu :: Nil
 
     LiftRules.setSiteMap(SiteMap(entries:_*))
