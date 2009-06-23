@@ -37,10 +37,10 @@ object DataAccumulator extends Actor {
   val MaxData = 100;
 
   val options = new FlotOptions {
-    override val xaxis = Full(new FlotAxisOptions {
+    override val xaxis = Full(new FlotAxisOptions() {
       override val mode = Full("time")
     })
-    override val yaxis = Full(new FlotAxisOptions {
+    override val yaxis = Full(new FlotAxisOptions() {
       override val min = Full(0.0)
     })
   }
@@ -52,7 +52,7 @@ object DataAccumulator extends Actor {
       (0 to MaxData).toList.map(x => (oldtime + x * 1000.0, 0.0))
     }
 
-    override val lines = Full (new FlotLinesOptions () {
+    override val lines = Full (new FlotLinesOptions() {
       override val show = Full(true)
     })
   } ::
@@ -63,7 +63,7 @@ object DataAccumulator extends Actor {
       (0 to MaxData).toList.map(x => (oldtime + x * 1000.0, 0.0))
     }
 
-    override val lines = Full (new FlotLinesOptions () {
+    override val lines = Full (new FlotLinesOptions() {
       override val show = Full(true)
     })
   } :: Nil

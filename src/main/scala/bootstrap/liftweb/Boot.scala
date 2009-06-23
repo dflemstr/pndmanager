@@ -83,7 +83,8 @@ class Boot {
 
     val entries = Menu(Loc("home", List("index"), "Home")) :: //TODO: translate!
                   packageMenu :: userMenu :: 
-                  Menu(Loc("stats", List("stats"), "Site statistics")) :: Nil //TODO: translate!
+                  Menu(Loc("stats", List("stats"), "Site statistics")) :: //TODO: translate!
+                  Menu(Loc("apiinfo", List("apiinfo"), "API Information")) :: Nil  //TODO: translate!
 
     LiftRules.setSiteMap(SiteMap(entries:_*))
   }

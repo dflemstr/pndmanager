@@ -444,6 +444,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
 <package>
   <name>{name.toString}</name>
   <dbid>{id.toString}</dbid>
+  <category>{category.asHtml.text}</category>
   <pndfile>{downloadLoc.createLink(NullLocParams) match {case Some(x) => S.contextPath + x; case _ => ""}}</pndfile>
   <updated format="gmt">{updatedOn.is.toGMTString}</updated>
   <updated format="unix">{updatedOn.is.getTime / 1000}</updated>
@@ -454,7 +455,7 @@ class Package extends LongKeyedMapper[Package] with IdPK {
 </package>
 
   def toListXML = 
-    <package><name>{name.toString}</name><version format="hex-32bit">{version.toString}</version><updated format="unix">{(updatedOn.is.getTime / 1000).toString}</updated><details>{S.contextPath + "/api/package/" + obscurePrimaryKey(this) + ".xml"}</details></package>
+    <package><name>{name.toString}</name><category>{category.asHtml.text}</category><version format="hex-32bit">{version.toString}</version><updated format="unix">{(updatedOn.is.getTime / 1000).toString}</updated><details>{S.contextPath + "/api/package/" + obscurePrimaryKey(this) + ".xml"}</details></package>
 
   //This should actually be in the Meta singleton, but I don't want to use reflection
   def allEntries: List[Entry] =

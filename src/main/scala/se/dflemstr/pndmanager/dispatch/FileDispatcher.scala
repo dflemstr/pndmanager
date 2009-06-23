@@ -10,8 +10,8 @@ import mapper._
 object FileDispatcher {
   val dispatcher: PartialFunction[Req, () => Box[LiftResponse]] = {
     //The following suffix hack is require dbecause Lift likes to mess with me
-    case Req("package" :: name :: Nil, "pnd", GetRequest) =>
-      () => pndFile(name + ".pnd")
+    case Req("package" :: name :: Nil, suffix, GetRequest) =>
+      () => pndFile(name + (if(suffix != null && suffix != "") "." + suffix else ""))
     case Req("screenshot" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined => () => screenshot(id)
     case Req("thumbnail" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined => () => thumbnail(id)
   }
