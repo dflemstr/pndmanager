@@ -36,13 +36,18 @@ object DataAccumulator extends Actor {
   val MaxData = 20;
 
   val options = new FlotOptions {
-    override val xaxis = Full (new FlotAxisOptions () {
-      override val mode = Full ("time")
+    override val xaxis = Full(new FlotAxisOptions {
+      override val mode = Full("time")
+    })
+
+    override val legend = Full(new FlotLegendOptions {
+      override val position = Full("ne")
+      override val margin = Full(20)
     })
   }
 
   private var series: List[FlotSerie] = new FlotSerie {
-    override val label = Full("Memory usage")
+    override val label = Full("Memory usage + cache")
     override val data = Nil
 
     override val lines = Full (new FlotLinesOptions () {
