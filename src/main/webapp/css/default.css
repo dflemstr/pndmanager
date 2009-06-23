@@ -7,6 +7,10 @@
     outline: none;
 }
 
+.container {
+    width: 790px !important;
+}
+
 p {
     text-indent: 0 !important; /* override built-in CSS */
     margin-top: 1.5em !important;
@@ -23,8 +27,19 @@ p {
 
 /* Page header */
 .page-header {
-    text-align: right;
     background: transparent url(../images/banner.png) center right no-repeat;
+}
+
+.page-header h1 a {
+    color: #666;
+    text-decoration: none;
+    font-family: "Warnock Pro", "Goudy Old Style","Palatino","Book Antiqua", Georgia, serif;
+    font-style: italic;
+    font-weight: normal;
+}
+
+.page-title {
+    margin: 0 !important;
 }
 
 /* Menu */
@@ -75,4 +90,9 @@ p {
 
 .witharrow {
     background: url(../images/menu.gif) center left no-repeat;
+}
+
+.returnlink {
+    background: url(../images/go-previous.png) center left no-repeat;
+    padding-left: 16px;
 }

@@ -57,12 +57,12 @@ function retractCurrentMenu() {
  * Gets called by the Lift framework when AJAX happens
  */
 function showAjax() {
-    $("#ajax-loader").slideDown("normal");
+    $("#ajax-loader").fadeIn("normal");
 }
 
 /*
  * Gets called by the Lift framework when AJAX doesn't happen
  */
 function hideAjax() {
-    $("#ajax-loader").slideUp("normal");
+    $("#ajax-loader").fadeOut("normal");
 }

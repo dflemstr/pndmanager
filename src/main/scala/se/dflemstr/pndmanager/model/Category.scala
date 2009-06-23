@@ -7,6 +7,7 @@ import mapper._
 import http._
 import SHtml._
 import util._
+import scala.xml._
 
 object Category extends Category with LongKeyedMetaMapper[Category] {
   override def dbTableName = "categories"
@@ -14,7 +15,6 @@ object Category extends Category with LongKeyedMetaMapper[Category] {
 
 class Category extends LongKeyedMapper[Category] with IdPK {
   def getSingleton = Category
-  
+
   object name extends MappedString(this, 32)
-  object description extends MappedString(this, 1024)
 }

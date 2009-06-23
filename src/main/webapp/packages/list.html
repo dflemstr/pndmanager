@@ -4,7 +4,18 @@
     </head>
     <lift:Package.list table_container_id="packagelist">
         <div id="packagelist">
-            <div><list:showDetail/>Show more information</div>
+            <div>
+                Search name: <list:searchbox/>
+                <list:clear>
+                    <img src="../images/clear.png" alt="Clear" style="position: relative; top: 3px;"/>
+                </list:clear>
+                by category: <list:categoryfilter/>
+            </div>
+            <div>
+                Results per page:<list:itemsperpage/>
+                <list:richview/>Rich view
+            </div>
+            
             <list:ordinary>
                 <table class="ordinary-list">
                     <thead>
@@ -46,20 +57,20 @@
                                 <row:entry>
                                     <div entry:class=""><entry:value/></div>
                                 </row:entry>
-                                <div class="details">
-                                    <row:view>Details</row:view>
-                                </div>
-                                <div class="delete">
-                                    <row:delete>Delete</row:delete>
-                                </div>
+                                <row:view>
+                                    <div class="details">Details</div>
+                                </row:view>
+                                <row:delete>
+                                    <div class="delete">Delete</div>
+                                </row:delete>
                             </div>
                         </list:row>
                     </div>
                 </div>
             </list:rich>
-
-            <list:prev>Previous page</list:prev>
-            <list:next>Next page</list:next>
+            <div>Page <list:pagenr/></div>
+            <div class="prev"><list:prev>Previous page</list:prev></div>
+            <div class="next"><list:next>Next page</list:next></div>
         </div>
     </lift:Package.list>
 </lift:surround>

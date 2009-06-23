@@ -1,5 +1,6 @@
 package bootstrap.liftweb
 
+import se.dflemstr.pndmanager.util._
 import _root_.net.liftweb.util._
 import _root_.net.liftweb.openid.SimpleOpenIdVendor
 import _root_.net.liftweb.http._
@@ -19,6 +20,8 @@ import _root_.javax.servlet.http.HttpServletRequest
   */
 class Boot {
   def boot {
+    LogBoot._log4JSetup
+
     // The location of our webapp classes
     LiftRules.addToPackages("se.dflemstr.pndmanager")
 
@@ -26,6 +29,7 @@ class Boot {
 
     initDB()
     schemifyMappers()
+    createData()
 
     localize()
 
@@ -51,6 +55,13 @@ class Boot {
     Schemifier.schemify(true, Log.infoF _, User, Package, Category,
                         LocalizedPackageDescription, LocalizedPackageTitle)
 
+  private def createData() = {
+    if(Category.count == 0) {
+      Props.get("pndmanager.categories", "").split(":").filter(_ matches """[\w/._\- ]+""").foreach(Category.create.name(_).save)
+      Log.info("Created some categories, count: " + Category.count)
+    }
+  }
+
   private def localize() = {
     LiftRules.localeCalculator = r => User.currentUser.map(_.locale.isAsLocale) openOr LiftRules.defaultLocaleCalculator(r)
     LiftRules.timeZoneCalculator = r => User.currentUser.map(_.timezone.isAsTimeZone) openOr LiftRules.defaultTimeZoneCalculator(r)
@@ -70,7 +81,8 @@ class Boot {
                            Package.viewMenu(pkgView, "Package.view").open_!)
 
     val entries = Menu(Loc("home", List("index"), "Home")) ::
-      packageMenu :: userMenu :: Nil
+                  //Menu(Loc("stats", List("stats"), "Site statistics")) ::
+                  packageMenu :: userMenu :: Nil
 
     LiftRules.setSiteMap(SiteMap(entries:_*))
   }
@@ -83,13 +95,16 @@ class Boot {
 
   private def initFrameworks() = {
     //Load localization data
-    LiftRules.resourceNames = "pndmanager" :: LiftRules.resourceNames
+    LiftRules.resourceNames = "translations" :: LiftRules.resourceNames
 
     //OpenID support
     LiftRules.dispatch.append(SimpleOpenIdVendor.dispatchPF)
 
-    //Init the TableSorter widget
-    net.liftweb.widgets.tablesorter.TableSorter.init()
+    //Init Flot
+    net.liftweb.widgets.flot.Flot.init()
+
+    //Init actors
+    SystemSensor.start()
   }
 
   def setHooks() = {
