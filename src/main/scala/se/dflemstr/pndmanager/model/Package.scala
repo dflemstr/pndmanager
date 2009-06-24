@@ -91,64 +91,6 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
     Log.info("An image was successfully resized to " + newSize) //don't translate this
     scaled
   }
-
-  def listMenu(path: List[String], viewPath: List[String], deletePath: List[String],
-               snippetName: String): Box[Menu] =
-    Full(Menu(Loc("package.browse", path, "Browse Packages", //TODO: translate!
-                  listSnippet(path, viewPath, deletePath, snippetName))))
-
-  def deleteMenu(path: List[String], snippetName: String): Box[Menu] = Full(Menu(new Loc[Package] {
-      def name = "package.delete"
-
-      override val snippets: SnippetTest = {
-        case (`snippetName`, Full(p: Package)) =>
-          if(mutablePackage_?(p))
-            deletePackage(p)
-          else
-            ((h: NodeSeq) => h \\ "form:denied")
-      }
-
-      def deletePackage(pkg: Package)(html: NodeSeq): NodeSeq = {
-        val origin = S.referer openOr "/"
-
-        def doEntries(in: NodeSeq): NodeSeq = pkg.allEntries.map(_ match {
-            case v: Visible =>
-              if(v.isVisibleIn(Appearance.Detail))
-                bind("entry", in, "name" -> v.displayHtml, "value" -> v.asHtml)
-              else
-                Nil
-            case _ => Nil
-          }).flatMap(x => x)
-
-        def doSubmit() = {
-          pkg.delete_!
-          S.notice("The package was deleted.") //TODO: translate!
-          S.redirectTo(origin)
-        }
-
-        bind("form", html,
-          "entry" -> doEntries _,
-          "submit" -> ((text: NodeSeq) => SHtml.submit(text.text, doSubmit _)),
-          "denied" -> Nil)
-      }
-
-      def defaultParams = Empty
-      def params = Nil
-
-      def text = new Loc.LinkText(calcLinkText _)
-      def calcLinkText(in: Package) = Text("Delete") //TODO: translate!
-
-      override val rewrite: LocRewrite =
-        Full(NamedPF(name) {
-            case RewriteRequest(pp @ ParsePath(_, _, true, false), _, _) if checkValidity(pp, path) =>
-              (RewriteResponse(path), find(pp.wholePath.last).open_!)
-          })
-
-      val link = new Loc.Link[Package](path, false) {
-        override def createLink(in: Package) =
-          Full(Text(path.mkString("/", "/", "/") + obscurePrimaryKey(in)))
-      }
-    }))
 }
 
 class Package extends LongKeyedMapper[Package] with IdPK {
