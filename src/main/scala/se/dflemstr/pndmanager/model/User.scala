@@ -52,7 +52,7 @@ object User extends User with MetaOpenIDProtoUser[User] {
         case (_, Full(exp)) =>
           S.error("An exception occured: %exception%" replace ("%exception%", exp.getMessage)) //TODO: translate!
         case _ =>
-          S.error("We could not log in, because: %reason%" replace ("%reason%", fo.open_!.getMessage)) //TODO: translate!
+          S.error("We could not log in, because: %reason%" replace ("%reason%", fo.open_!.getStatusMsg)) //TODO: translate!
       }
       RedirectResponse(homePage)
     }

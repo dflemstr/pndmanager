@@ -6,32 +6,39 @@ import _root_.java.text.DateFormat
 import _root_.scala.xml._
 import _root_.scala.collection.mutable
 
-import _root_.net.liftweb._
-import java.lang.reflect.Method
-import sitemap._
-import Loc._
-import mapper._
-import http._
-import util._
-import Helpers._
-import js._
-import JsCmds._
+import net.liftweb._
+import net.liftweb.sitemap._
+import net.liftweb.sitemap.Loc._
+import net.liftweb.mapper._
+import net.liftweb.http._
+import net.liftweb.util._
+import net.liftweb.util.Helpers._
+import net.liftweb.http.js._
+import net.liftweb.http.js.JsCmds._
 
-import java.awt.image.BufferedImage
-import java.awt.{AlphaComposite,Image,RenderingHints}
-import javax.imageio.ImageIO
-import java.io.ByteArrayOutputStream
+import _root_.java.awt.image.BufferedImage
+import _root_.java.awt.{AlphaComposite,Image,RenderingHints}
+import _root_.javax.imageio.ImageIO
+import _root_.java.io.ByteArrayOutputStream
 
 import _root_.se.dflemstr.pndmanager.util._
-
-import entry._
-
-//TODO: This file is far to complex! Outsource code in traits!
+import _root_.se.dflemstr.pndmanager.model.entry._
 
 /** The MetaMapper for package objects */
-object Package extends Package with LongKeyedMetaMapper[Package] with EntryCRD[Long, Package] {
-  override def fieldOrder = List(name, category, version, owner, updatedOn, pndFile)
-  override def dbTableName = "packages"
+object Package extends Package with LongKeyedMetaMapper[Package] 
+    with EntryCRD[Long, Package] with RESTApi[Long, Package] {
+  override def fieldOrder = List(name, category, version, owner, updatedOn, pndFile, valid)
+
+  override val baseName = "package"
+
+  override val createMenuName = "Upload new package" //TODO: translate!
+  override val viewMenuName = "View package" //TODO: translate!
+  override val listMenuName = "Browse packages" //TODO: translate!
+  override val deleteMenuName = "Delete package"
+
+  override lazy val digestAccessNode = "repository"
+  override lazy val elementAccessNode = "package"
+  override def createTag(in: NodeSeq): Elem = <pndmanager-api>{in}</pndmanager-api>
 
   /** Contains the "search string" provided by the user */
   object FilterString extends SessionVar[String]("")
@@ -50,6 +57,24 @@ object Package extends Package with LongKeyedMetaMapper[Package] with EntryCRD[L
   } catch { case _ => false }
 
 
+  override def listBindParams(redraw: () => JsCmd): List[BindParam] =
+    ("searchbox" -> SHtml.ajaxText(FilterString, x => {FilterString(x); FirstItemIndex(0); redraw()})) ::
+    ("categoryfilter" -> SHtml.ajaxSelect(filterCategoryAlternatives, Full(FilterCategory.get match {
+        case None => "0"
+        case Some(c) => c.id.toString
+      }),
+      (x: String) => {x match {
+        case "0" | "" | null =>
+          FilterCategory(None)
+          FirstItemIndex(0)
+          redraw()
+        case s =>
+          FilterCategory(Some(try {Category.find(s.toInt) openOr null} catch {case _ => null}))
+          FirstItemIndex(0)
+          redraw()
+      }})) ::
+    ("clear" -> ((s: NodeSeq) => SHtml.a(() => {FilterString(""); FirstItemIndex(0); redraw()}, s))) :: Nil
+
   /** A validation for MappedFields for checking if a date is in the future */
   private def notInFuture(field: MappedDateTime[Package])(date: Date) =
     List(FieldError(field, Text("Fatal: We tried to create the package in the future." +
@@ -62,6 +87,37 @@ object Package extends Package with LongKeyedMetaMapper[Package] with EntryCRD[L
     formatter.setTimeZone(S.timeZone)
 
     try {Text(formatter.format(date))} catch { case _ => <em>Corrupted</em>} //TODO: translate!
+  }
+
+  private def findBestTranslation(strings: List[LocalizedString[_]]): (String, NodeSeq) = {
+    val country = S.locale.getCountry
+    
+    val localized = strings.find(_.locale.is == S.locale)
+    val badLocalized = strings.find(_.locale.is contains country)
+    val american = strings.find(_.locale.is == "en_US")
+    val english = strings.find(_.locale.is contains "en")
+
+    val best = List(localized, badLocalized, american, english)
+      .find(_ match {case Some(_) => true; case None => false})
+
+    best match {
+      case Some(Some(str)) => (str.locale, Text(str.string))
+      case _ => ("", <em>({"No translation found for %locale%" replace ("%locale%", S.locale.toString)})</em>) //TODO: translate!
+    }
+  }
+
+  private def updateImages(p: Package, image: BufferedImage) = {
+    val thumb = createResizedCopy(image, (100, 75))
+    val shot = createResizedCopy(image, (200, 150))
+
+    val thumbData = new ByteArrayOutputStream
+    val shotData = new ByteArrayOutputStream
+
+    ImageIO.write(thumb, "PNG", thumbData)
+    ImageIO.write(shot, "PNG", shotData)
+
+    p.thumbnail(thumbData.toByteArray)
+    p.screenshot(shotData.toByteArray)
   }
 
   /** The sort statement for the current list session */
@@ -91,7 +147,7 @@ object Package extends Package with LongKeyedMetaMapper[Package] with EntryCRD[L
    * Reads the pndFile field and populates all the other fields and entries with
    * acquired information.
    */
-  def creationProcess(p: Package): List[FieldError] = pndFile.validate match {
+  def creationProcess(p: Package): List[FieldError] = p.pndFile.validate match {
     case Nil =>
       p.save //just so that we get an ID; neccessary for associating localized strings
       try {
@@ -113,17 +169,17 @@ object Package extends Package with LongKeyedMetaMapper[Package] with EntryCRD[L
           S.warning("The PND didn't contain any valid content descriptions; no descriptions will be shown!") //TODO: translate!
 
         pxml.description.foreach(d => LocalizedPackageDescription
-                                 .create.owner(this).string(d._1).locale(d._2).save)
+                                 .create.owner(p).string(d._1).locale(d._2).save)
 
         //The title will be Nil automatically if none were found.
         if(pxml.title.length == 0)
           S.warning("The PND didn't contain any valid titles; no titles will be shown!") //TODO: translate!
 
         pxml.title.foreach(t => LocalizedPackageTitle
-                           .create.owner(this).string(t._1).locale(t._2).save)
+                           .create.owner(p).string(t._1).locale(t._2).save)
 
         pnd.PNGdata match {
-          case Full(image) => updateImages(image)
+          case Full(image) => updateImages(p, image)
           case Empty => S.warning("Your PND does not contain a screenshot; no screenshot will be shown!") //TODO: translate!
           case Failure(x, _, _) => S.warning("We tried to find a screenshot in your PND, but were " +
                                              "unable to, so none will be displayed. The error was: %error%" replace ("%error%", x)) //TODO: translate!
@@ -144,11 +200,10 @@ object Package extends Package with LongKeyedMetaMapper[Package] with EntryCRD[L
   }
 }
 
-class Package extends LongKeyedMapper[Package] with IdPK {
+class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package] with IdPK {
   import Package._
 
-  //This should actually be in the Meta singleton, but I don't want to use reflection
-  def allEntries: List[Entry] =
+  def entries: List[Entry[Package]] =
     List(screenshot, thumbnail, title, name, category, version, description, owner, updatedOn, pndFile)
     
   def getSingleton = Package
@@ -156,20 +211,21 @@ class Package extends LongKeyedMapper[Package] with IdPK {
   def downloadLoc = Loc("package-" + name.is + "-" + version.is,
                         List("package", name.is + "-" + version.toHumanReadable + ".pnd"), "Download") //TODO: translate
 
-  object owner extends MappedLongForeignKey(this, User) with ShowInRichSummary with Sortable[Long] {
+  object owner extends MappedLongForeignKey(this, User)
+      with ShowInRichSummary[Package] with Sortable[Long, Package] with APIExposed[Package] {
     override def displayName = "Owner" //TODO: translate!
-    override def asHtml = Text(User.findByKey(is).map(_.nickname.is) openOr "Unknown") //TODO: translate!
+    override def asHtml = Text(User.findByKey(is).map(_.niceName) openOr "Unknown") //TODO: translate!
     def asXML = <owner>{asHtml.text}</owner>
   }
 
-  object updatedOn extends MappedDateTime(this) with ShowInRichSummary with Sortable[Date] {
+  object updatedOn extends MappedDateTime(this) with ShowInRichSummary[Package] with Sortable[Date, Package] with APIExposed[Package] {
     override def displayName = "Updated" //TODO: translate!
     override def validations = super.validations ::: List(notInFuture(this) _)
     override def asHtml = dateAsHtml(is)
     def asXML = <updatedon>{is.getTime / 1000}</updatedon>
   }
 
-  object pndFile extends MappedBinary(this) with Editable with ShowInDigest {
+  object pndFile extends MappedBinary(this) with Editable[Package] with ShowInDigest[Package] with APIExposed[Package] {
     override def displayName = "PND File"
     override def validations = notZeroSize _ :: containsPXML _ :: super.validations
 
@@ -190,24 +246,36 @@ class Package extends LongKeyedMapper[Package] with IdPK {
       
     override def asHtml = <a href={downloadLoc.createLink(NullLocParams)} class="downloadlink">{downloadLoc.linkText openOr "Download"}</a> //TODO: translate!
 
-    def asXML = <xml:group />
+    def asXML = <pndfile>{downloadLoc.createLink(NullLocParams) match {
+          case Some(x) => S.contextPath + x
+          case _ => null
+        }
+      }</pndfile>
   }
 
-  object name extends MappedPoliteString(this, 64) with ShowInDigest with Sortable[String] {
+  object name extends MappedPoliteString(this, 64) with ShowInDigest[Package]
+      with Sortable[String, Package] with APIExposed[Package] {
     override def displayName = "Name" //TODO: translate!
 
     override def dbIndexed_? = true
+    
+    def asXML = <name>{is}</name>
   }
 
-  object category extends MappedLongForeignKey(this, Category) with ShowInSummary with Sortable[Long] with Editable {
+  object category extends MappedLongForeignKey(this, Category) with ShowInSummary[Package]
+      with Sortable[Long, Package] with Editable[Package] with APIExposed[Package] {
     override def displayName = "Category" //TODO: translate!
+    val unknown = "Unknown" //TODO: translate!
 
-    override def asHtml = Category.find(is).map(_.name.asHtml) openOr Text("Unknown") //TODO: translate!
+    override def asHtml = Category.find(is).map(_.name.asHtml) openOr Text(unknown)
 
     override def validSelectValues = Full(Category.findAll.map(c => (c.id, c.name.asHtml.text)))
+
+    def asXML = <category>{Category.find(is).map(_.name.is) openOr unknown}</category>
   }
 
-  object version extends MappedString(this, 32) with ShowInDigest with Sortable[String] {
+  object version extends MappedString(this, 32) with ShowInDigest[Package]
+      with Sortable[String, Package] with APIExposed[Package] {
     //The actual value of this is a 16 char hex string, so
     //that it becomes easy to sort versions since it can be done alphabetically
     // (And I didn't want to create a custom MappedField just for this)
@@ -240,47 +308,34 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     }
 
     override def asHtml = Text(toHumanReadable)
+
+    def asXML = <version>{is}</version>
   }
 
   object valid extends MappedBoolean(this)
 
-  object description extends ShowInDetail {
+  object description extends ShowInDetail[Package] {
+    
     def displayHtml = Text("Description") //TODO: translate!
 
     def asHtml = {
       val descriptions = LocalizedPackageDescription.findAll(
         By(LocalizedPackageDescription.owner, Package.this))
-      
-      val localized = descriptions.find(_.locale == S.locale)
-      val en_US = descriptions.find(t => t.locale == "en_US" || t.locale == "en")
-
-      (localized, en_US) match {
-        case (Some(descr), _) => Text(descr.string)
-        case (None, Some(descr)) => Text(descr.string)
-        case (None, None) => <em>({"No translation found for %locale%" replace ("%locale%", S.locale.toString)})</em> //TODO: translate!
-      }
+      findBestTranslation(descriptions)._2
     }
   }
 
-  object title extends ShowInRichSummary {
+  object title extends ShowInRichSummary[Package] {
     def displayHtml = Text("Title") //TODO: translate!
 
     def asHtml = {
       val titles = LocalizedPackageTitle.findAll(
         By(LocalizedPackageTitle.owner, Package.this))
-
-      val localized = titles.find(_.locale == S.locale)
-      val english = titles.find(t => t.locale == "en_US" || t.locale == "en")
-
-      (localized, english) match {
-        case (Some(title), _) => Text(title.string)
-        case (None, Some(title)) => Text(title.string)
-        case (None, None) => <em>({"No translation found for %locale%" replace ("%locale%", S.locale.toString)})</em> //TODO: translate!
-      }
+      findBestTranslation(titles)._2
     }
   }
 
-  object thumbnail extends MappedBinary(this) with Visible {
+  object thumbnail extends MappedBinary(this) with Visible[Package] {
     override def displayHtml = Text("Preview") //TODO: translate!
 
     def isVisibleIn(app: Appearance.Value) = app match {
@@ -294,11 +349,11 @@ class Package extends LongKeyedMapper[Package] with IdPK {
         if(isEmpty)
           <em class="nothumbnail" style="text-align: center;">(No thumbnail)</em>
         else
-          <img src={"/thumbnail/" + obscurePrimaryKey(Package.this) + ".png"}/>
+          <img src={"/thumbnail/" + urlFriendlyPrimaryKey(Package.this) + ".png"}/>
       }</div>
   }
 
-  object screenshot extends MappedBinary(this) with ShowInDetail {
+  object screenshot extends MappedBinary(this) with ShowInDetail[Package] with APIExposed[Package] {
     override def displayHtml = Text("Screenshot") //TODO: translate!
 
     def isEmpty = is == null || is.length == 0
@@ -307,23 +362,10 @@ class Package extends LongKeyedMapper[Package] with IdPK {
         if(isEmpty)
           <em class="noscreenshot">(No screenshot)</em>
         else
-          <img src={"/screenshot/" + obscurePrimaryKey(Package.this) + ".png"} alt="screenshot"/>
+          <img src={"/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="screenshot"/>
 
      }</div>
-  }
-
-  def updateImages(image: BufferedImage) = {
-    val thumb = createResizedCopy(image, (100, 75))
-    val shot = createResizedCopy(image, (200, 150))
-
-    val thumbData = new ByteArrayOutputStream
-    val shotData = new ByteArrayOutputStream
-
-    ImageIO.write(thumb, "PNG", thumbData)
-    ImageIO.write(shot, "PNG", shotData)
-
-    thumbnail(thumbData.toByteArray)
-    screenshot(shotData.toByteArray)
+   def asXML = <screenshot>{S.contextPath + "/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"}</screenshot>
   }
 
 }

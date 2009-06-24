@@ -1,20 +1,22 @@
 <lift:surround with="default" at="content">
-    <lift:Package.addForm form="POST" multipart="true">
+    <lift:Package.create form="POST" multipart="true">
         <table>
             <tbody>
-                <form:entry>
+                <create:entry>
                     <tr>
                         <td><entry:name/></td>
                         <td><entry:input/></td>
                     </tr>
-                </form:entry>
+                </create:entry>
             </tbody>
             <tfoot>
                 <tr>
                     <td> </td>
-                    <td><form:submit>Upload</form:submit></td>
+                    <td><create:submit>Upload</create:submit></td>
                 </tr>
             </tfoot>
         </table>
-    </lift:Package.addForm>
+        <create:succeded>The package was successfully uploaded!</create:succeded>
+        <create:denied>Sorry, you need to log in to do that.</create:denied>
+    </lift:Package.create>
 </lift:surround>

@@ -68,7 +68,7 @@ object DataAccumulator extends Actor {
   }
 
   private var series: List[FlotSerie] = new FlotSerie {
-    override val label = Full("Memory usage + cache")
+    override val label = Full("Used memory + cache")
     override val data = Nil
 
     override val lines = Full (new FlotLinesOptions() {

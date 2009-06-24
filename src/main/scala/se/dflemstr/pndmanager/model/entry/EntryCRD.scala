@@ -10,6 +10,7 @@ import _root_.net.liftweb.sitemap.Loc._
 import _root_.net.liftweb.mapper._
 
 import _root_.scala.xml._
+import _root_.scala.collection.mutable
 
 /** Gives a MetaMapper that provides Mappers with Entries the ability to Create, Read and Delete items easily */
 trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
@@ -21,25 +22,30 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
    */
 
   /** The short, descriptive and URL-friendly name of one handled CRD item, used for menus etc */
-  val baseName: String = "item"
+  def baseName: String = "item"
+
+  override def dbTableName = baseName + "s"
   
-  val createMenuName = "Create " + baseName
-  val viewMenuName = "View " + baseName
-  val listMenuName = "List " + baseName + "s"
-  val deleteMenuName = "Delete " + baseName
+  def createMenuName = "Create " + baseName
+  def viewMenuName = "View " + baseName
+  def listMenuName = "List " + baseName + "s"
+  def deleteMenuName = "Delete " + baseName
 
-  def createSuccessMessage(m: MapperType) = "The %mapper% was successfully created!" replace ("%mapper%", baseName)
-  def deleteSuccessMessage = "Delete " + baseName
+  def createPath = List(baseName + "s", "create")
+  def viewPath = List(baseName + "s", "view")
+  def listPath = List(baseName + "s", "list")
+  def deletePath = List(baseName + "s", "delete")
 
-  val createPath = List(baseName + "s", "create")
-  val viewPath = List(baseName + "s", "view")
-  val listPath = List(baseName + "s", "list")
-  val deletePath = List(baseName + "s", "delete")
 
-  val createBindParams: List[BindParam] = Nil
-  val viewBindParams: List[BindParam] = Nil
-  val listBindParams: List[BindParam] = Nil
-  val deleteBindParams: List[BindParam] = Nil
+  def createAction = "create"
+  def listAction = "list"
+  def viewAction = "view"
+  def deleteAction = "delete"
+
+  def createBindParams: List[BindParam] = Nil
+  def viewBindParams: List[BindParam] = Nil
+  def listBindParams(redraw: () => JsCmd): List[BindParam] = Nil
+  def deleteBindParams: List[BindParam] = Nil
 
   def createAuthorization: Boolean = true
   def deleteAuthorization(m: MapperType): Boolean = true
@@ -79,20 +85,20 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
   private lazy val itemCountAlternatives = displayPerPageAlternatives.map(x => (x.toString, x.toString))
 
   /** The number of items displayed per page */
-  private object DisplayItemsPerPage extends SessionVar[Int](5)
+  object DisplayItemsPerPage extends SessionVar[Int](5)
   
   /** The index of the first item to display */
-  private object FirstItemIndex extends SessionVar[Int](0)
+  object FirstItemIndex extends SessionVar[Int](0)
 
   /** Decides whether we should show RichSummary entries or not */
   object RichDisplay extends SessionVar[Boolean](false)
 
   /** Contains all the "sortings" (sort directions) for sortable entries */
-  object Sortings extends SessionVar[Map[Sortable[_, MapperType], Option[AscOrDesc]]] (Map(
-      entries
-        .filter(_.isInstanceOf[Sortable[_, _]])
-        .map(entry => (entry.asInstanceOf[Sortable[_, MapperType]], None)): _*)
-  )
+  object Sortings extends SessionVar[mutable.Map[Sortable[_, MapperType], Option[AscOrDesc]]] (mutable.Map(
+    entries
+      .filter(_.isInstanceOf[Sortable[_, _]])
+      .map(entry => (entry.asInstanceOf[Sortable[_, MapperType]], None)): _*
+  ))
 
 
 
@@ -119,22 +125,23 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
   private def getVisibleEntries(m: MapperType, appearance: Appearance.Value): List[Visible[MapperType]] =
     m.entries.map(x => {
       x match {
-        case v: Visible[MapperType]@unchecked if(v.isVisibleIn(appearance)) => List(v)
+        case v: Visible[_] if(v.isVisibleIn(appearance)) => List(v.asInstanceOf[Visible[MapperType]])
         case _ => Nil
       }
     }).flatMap(x => x)
 
-  private def doEntries(m: MapperType, appearance: Appearance.Value)(in: NodeSeq): NodeSeq = {
+  private def doEntries(e: List[Entry[MapperType]], appearance: Appearance.Value)(in: NodeSeq): NodeSeq = {
     var entryCount = 0
-    m.entries.map(x => {
+    e.map(x => {
       x match {
         case v: Visible[_] =>
-          entryCount += 1
-          if(v.isVisibleIn(appearance))
+          if(v.isVisibleIn(appearance)) {
+            entryCount += 1
             bind("entry", in,
                  "name" -> v.displayHtml,
                  "value" -> v.asHtml,
                  countClassBinder("entry", entryCount))
+          }
           else
             Nil
         case _ => Nil
@@ -142,99 +149,80 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
     }).flatMap(x => x)
   }
 
-  private def createRewrite(name: String, path: List[String]): Box[PartialFunction[RewriteRequest, (RewriteResponse, MapperType)]] =
+  private def createRewrite(name: String, path: List[String]):
+    Box[PartialFunction[RewriteRequest, (RewriteResponse, MapperType)]] =
   Full(NamedPF(name) {
     case RewriteRequest(pp @ ParsePath(_, _, true, false), _, _) if checkValidity(pp, path) =>
       (RewriteResponse(path), find(pp.wholePath.last).open_!)
   })
 
-
   private def origin = S.referer openOr "/"
-  
-  def createMenu(path: List[String], snippetName: String): Box[Menu] =
-  Full(Menu(new Loc[NullLocParams] {
-    val name = baseName + "." + action
-    val action = "create"
 
-    override val snippets: SnippetTest = {
-      case (`snippetName`, _) => createMapper _
-    }
+  /** Creates a form for editing a MapperType */
+  private def createMapper(template: NodeSeq) = {
+    val thisSnippet = S.currentSnippet
+    val mapper = EntryCRD.this.create
 
-    def defaultParams = Empty
-    def params = Nil
+    /** Closure for creating the form */
+    def makePage(html: NodeSeq): NodeSeq = {
+      val backdoor = origin
+      
+      /** Make a form list of all the entries */
+      def doEntries(temp: NodeSeq): NodeSeq = (
+        for {
+          entry <- entries
+          if(entry match {
+              case x: Editable[_] => true
+              case _ => false
+            })
 
-    def text = new Loc.LinkText(calcLinkText _)
-    def calcLinkText(in: NullLocParams) = Text(createMenuName)
+          instanceField = getActualBaseField(mapper, entry.asInstanceOf[Editable[MapperType]])
+        } yield bind("entry", temp,
+                     "name" -> instanceField.displayHtml,
+                     "input" -> instanceField.toForm)
+      ).flatMap(x => x) //I like one-liners...
 
-    /** Creates a form for editing a MapperType */
-    private def createMapper(template: NodeSeq) = {
-      val thisSnippet = S.currentSnippet
-      val mapper = EntryCRD.this.create
-
-      /** Closure for creating the form */
-      def makePage(html: NodeSeq): NodeSeq = {
-        /** Make a form list of all the entries */
-        def doEntries(temp: NodeSeq): NodeSeq = (
-          for {
-            entry <- entries
-            if(entry match {
-                case x: Editable[_] => true
-                case _ => false
-              })
-
-            instanceField = getActualBaseField(mapper, entry.asInstanceOf[Editable[MapperType]])
-          } yield bind("entry", temp,
-                       "name" -> instanceField.displayHtml,
-                       "input" -> instanceField.toForm)
-        ).flatMap(x => x) //I like one-liners...
-
-        /** The submit callback */
-        def onSubmit() = creationProcess(mapper) match {
-          case Nil =>
-            mapper.save
-            S.notice(html \\ (action + ":succeded"))
-            S.redirectTo(origin)
-          case error =>
-            S.error(error)
-            thisSnippet.foreach(S.mapSnippet(_, makePage))
-        }
-
-        bind(action, html,
-             "entry" -> doEntries _,
-             "submit"-> ((x: NodeSeq) => SHtml.submit(x.text, onSubmit _)),
-             "denied" -> Nil,
-             "succeded" -> Nil,
-             createBindParams: _*)
+      /** The submit callback */
+      def onSubmit() = creationProcess(mapper) match {
+        case Nil =>
+          mapper.save
+          S.notice(html \\ "succeded")
+          S.redirectTo(backdoor)
+        case error =>
+          S.error(error)
+          thisSnippet.foreach(S.mapSnippet(_, makePage))
       }
 
-      makePage(template)
+      bind(createAction, html,
+           "entry" -> doEntries _ ::
+           "submit"-> ((x: NodeSeq) => SHtml.submit(x.text, onSubmit _)) ::
+           "denied" -> Nil ::
+           "succeded" -> Nil ::
+           createBindParams: _*)
     }
-  }))
 
-  def listMenu(snippetName: String): Box[Menu] = listMenu(listPath, viewPath, deletePath, snippetName)
+    makePage(template)
+  }
 
-  def listMenu(path: List[String], viewPath: List[String],
-               deletePath: List[String], snippetName: String): Box[Menu] =
-  Full(Menu(new Loc[NullLocParams] {
-    val name = baseName + "." + action
-    val action = "list"
+  def createMenu(snippetName: String): Box[Menu] = createMenu(createPath, snippetName)
+
+  def createMenu(path: List[String], snippetName: String): Box[Menu] =
+    Full(Menu(Loc(baseName + "." + createAction, path, createMenuName, 
+                  If(createAuthorization _, () => RedirectResponse(origin)), Snippet(snippetName, createMapper _))))
+
+  def listSnippet(viewPath: List[String],
+                  deletePath: List[String],
+                  snippetName: String) = new DispatchLocSnippets {
+    def dispatch = {
+      case `snippetName` => listMappers _
+    }
 
     /** Creates a relative link out of a path */
     def s(path: List[String]) = path.mkString("/", "/", "")
-    val listPathString = s(path)
+    
     val viewPathString = s(viewPath)
     val deletePathString = s(deletePath)
-
-    override val snippets: SnippetTest = {
-      case (`snippetName`, _) => listMappers _
-    }
-
-    def defaultParams = Empty
-    def params = Nil
-
-    val text = new Loc.LinkText(calcLinkText _)
-    def calcLinkText(in: NullLocParams): NodeSeq = Text(listMenuName)
-
+    
     /** Create a list of mappers */
     private def listMappers(template: NodeSeq): NodeSeq = {
 
@@ -242,9 +230,9 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
        * The container that contains the whole list. Used to "redraw" the list with AJAX;
        * we need to be able to find the list with JS once it has been created to modify it
        */
-      val containerId = S.attr(action + "_container_id").open_!
+      val containerId = S.attr(listAction + "_container_id").open_!
       //Yes, throw an exception if this fails! This attribute is really important!
-      
+
       //Use AJAX to rerender the whole list on request
       def redraw() = JsCmds.SetHtml(containerId, inner)
 
@@ -270,20 +258,25 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
           bind("header", in,
             //The header label
             "name" -> (f match {
-              case s: Sortable[_, MapperType]@unchecked => SHtml.a(() => {Sortings(s) match {
-                  case None => Sortings(s) = Some(Descending)
-                  case Some(Descending) => Sortings(s) = Some(Ascending)
-                  case Some(Ascending) => Sortings(s) = None
+              case s: Sortable[_, _] => SHtml.a(() => {
+                val x = s.asInstanceOf[Sortable[_ ,MapperType]]
+                Sortings(x) match {
+                  case None => Sortings(x) = Some(Descending)
+                  case Some(Descending) => Sortings(x) = Some(Ascending)
+                  case Some(Ascending) => Sortings(x) = None
+                  case s => Log.info("A list sorting problem has occured! Involved value: " + s)
                 }; redraw()}, s.displayHtml)
               case _ => f.displayHtml
             }),
             //The header class
             FuncAttrBindParam("class", _ => Text((f match {
-              case s: Sortable[_, MapperType]@unchecked => Sortings(s) match {
-                case Some(Ascending) => "sortable ascending "
-                case Some(Descending) => "sortable descending "
-                case None => "sortable unsorted "
-              }
+              case s: Sortable[_, _] =>
+                val x = s.asInstanceOf[Sortable[_, MapperType]]
+                Sortings(x) match {
+                  case Some(Ascending) => "sortable ascending "
+                  case Some(Descending) => "sortable descending "
+                  case None => "sortable unsorted "
+                }
               case _ => ""
             }) + countClass("header", headerCount)), "class")
           )
@@ -296,7 +289,7 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
         items.take(itemsPerPage).flatMap {c =>
           rowCount += 1
           bind("row", in ,
-               "entry" -> doEntries(c, appearance) _,
+               "entry" -> doEntries(c.entries, appearance) _,
                "view" -> ((label: NodeSeq) =>
                  <a href={viewPathString + "/" + urlFriendlyPrimaryKey(c)}>{label}</a>),
 
@@ -321,11 +314,11 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
         //compared to the ordinary list, thusly:
         val richifiedTemplate =
           if(RichDisplay)
-            bind(action, template,
+            bind(listAction, template,
                  "rich" -> ((x: NodeSeq) => x),
                  "ordinary" -> Nil)
           else
-            bind(action, template,
+            bind(listAction, template,
                  "rich" -> Nil,
                  "ordinary" -> ((x: NodeSeq) => x))
 
@@ -333,32 +326,39 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
         val appearance = if(RichDisplay) Appearance.RichSummary else  Appearance.Summary
 
         //Bind all the fields we need
-        bind(action, richifiedTemplate,
-             "richview" -> SHtml.ajaxCheckbox(RichDisplay, v => {RichDisplay(v); redraw()}),
+        bind(listAction, richifiedTemplate,
+             "richview" -> SHtml.ajaxCheckbox(RichDisplay, v => {RichDisplay(v); redraw()}) ::
              "itemsperpage" -> SHtml.ajaxSelect(itemCountAlternatives,
                                                 Full(itemsPerPage.toString),
-                                                v => {DisplayItemsPerPage(v.toInt); FirstItemIndex(0); redraw()}),
-             "pagenr" -> Text((Math.ceil(firstIndex.toFloat / itemsPerPage).toInt + 1).toString),
-             "header" -> doHeaders(appearance) _,
-             "row" -> doRows(list, itemsPerPage, appearance) _,
-             "prev" -> prev(itemsPerPage) _,
-             "next" -> next(itemsPerPage, list.length) _,
-             listBindParams: _*)
+                                                v => {DisplayItemsPerPage(v.toInt); FirstItemIndex(0); redraw()})::
+             "pagenr" -> Text((Math.ceil(firstIndex.toFloat / itemsPerPage).toInt + 1).toString) ::
+             "header" -> doHeaders(appearance) _ ::
+             "row" -> doRows(list, itemsPerPage, appearance) _ ::
+             "prev" -> prev(itemsPerPage) _ ::
+             "next" -> next(itemsPerPage, list.length) _ ::
+             listBindParams(redraw): _*)
       }
 
       inner
     }
-  }))
+  }
+
+  def listMenu(snippetName: String): Box[Menu] = listMenu(listPath, viewPath, deletePath, snippetName)
+
+  def listMenu(path: List[String], viewPath: List[String], deletePath: List[String],
+               snippetName: String): Box[Menu] =
+    Full(Menu(Loc(baseName + "." + listAction, path, listMenuName,
+                  listSnippet(viewPath, deletePath, snippetName))))
 
   def viewMenu(snippetName: String): Box[Menu] = viewMenu(viewPath, snippetName)
 
   def viewMenu(path: List[String], snippetName: String): Box[Menu] =
   Full(Menu(new Loc[MapperType] {
+    val action = viewAction
     val name = baseName + "." + action
-    val action = "view"
 
     override val snippets: SnippetTest = {
-      case (`snippetName`, Full(m: MapperType @unchecked)) => displayMapper(m) _
+      case (`snippetName`, Full(m)) => displayMapper(m.asInstanceOf[MapperType]) _
     }
 
     def defaultParams = Empty
@@ -371,44 +371,44 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
 
     def displayMapper(m: MapperType)(template: NodeSeq): NodeSeq = {
       bind(action, template,
-           "entry" -> doEntries(m, Appearance.Detail) _,
+           "entry" -> doEntries(m.entries, Appearance.Detail) _ ::
            viewBindParams: _*)
     }
 
-    val link =
-      new Loc.Link[MapperType](path, false) {
-        override def createLink(in: MapperType) =
-          Full(Text(path.mkString("/", "/", "/") + urlFriendlyPrimaryKey(in)))
-      }
+    val link = new Loc.Link[MapperType](path, false) {
+      override def createLink(in: MapperType) =
+        Full(Text(path.mkString("/", "/", "/") + urlFriendlyPrimaryKey(in)))
+    }
   }))
 
   def deleteMenu(snippetName: String): Box[Menu] = deleteMenu(deletePath, snippetName)
 
   def deleteMenu(path: List[String], snippetName: String): Box[Menu] =
   Full(Menu(new Loc[MapperType] {
-    val action = "delete"
-    val name = baseName + "." + action
+    val name = baseName + "." + deleteAction
 
     override val snippets: SnippetTest = {
-      case (`snippetName`, Full(m: MapperType @unchecked)) =>
-        if(deleteAuthorization(m))
-          deleteMapper(m)
+      case (`snippetName`, Full(m)) =>
+        val x = m.asInstanceOf[MapperType]
+        if(deleteAuthorization(x))
+          deleteMapper(x)
         else
-          ((h: NodeSeq) => h \\ (action + ":denied"))
+          ((h: NodeSeq) => h \\ "denied")
     }
 
     def deleteMapper(m: MapperType)(template: NodeSeq): NodeSeq = {
+      val backdoor = origin
       def doSubmit() = {
         m.delete_!
-        S.notice(template \\ (action + ":succeded"))
-        S.redirectTo(origin)
+        S.notice(template \\ "succeded")
+        S.redirectTo(backdoor)
       }
 
-      bind(action, template,
-           "entry" -> doEntries(m, Appearance.Detail) _,
-           "submit" -> ((text: NodeSeq) => SHtml.submit(text.text, doSubmit _)),
-           "denied" -> Nil,
-           "succeded" -> Nil,
+      bind(deleteAction, template,
+           "entry" -> doEntries(m.entries, Appearance.Detail) _ ::
+           "submit" -> ((text: NodeSeq) => SHtml.submit(text.text, doSubmit _)) ::
+           "denied" -> Nil ::
+           "succeded" -> Nil ::
            deleteBindParams: _*)
     }
 
@@ -427,8 +427,7 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
   }))
 }
 
-trait EntryProvider[K, M <: EntryProvider[K, M]]
-    extends KeyedMapper[K, M] {
+trait EntryProvider[K, M <: EntryProvider[K, M]] extends KeyedMapper[K, M] {
   this: M =>
   
   /** The entries managed by the CRD system */
