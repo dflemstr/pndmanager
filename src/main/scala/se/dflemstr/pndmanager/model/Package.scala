@@ -24,17 +24,14 @@ import java.io.ByteArrayOutputStream
 
 import _root_.se.dflemstr.pndmanager.util._
 
-import display._
+import entry._
 
 //TODO: This file is far to complex! Outsource code in traits!
 
 /** The MetaMapper for package objects */
-object Package extends Package with LongKeyedMetaMapper[Package] {
-  //--> for the database:
+object Package extends Package with LongKeyedMetaMapper[Package] with EntryCRD[Long, Package] {
   override def fieldOrder = List(name, category, version, owner, updatedOn, pndFile)
   override def dbTableName = "packages"
-
-  //--> for the display system:
 
   /** Contains the "search string" provided by the user */
   object FilterString extends SessionVar[String]("")
@@ -45,19 +42,13 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
     ("0", "No filter") :: Category.findAll.map(x => (x.id.toString, x.name.toString)).toList
   }
 
-  //--> for the internals of Package:
+  override def createAuthorization = User.loggedIn_?
 
-  /**
-   * A condition for menus that requires a user to be logged in;
-   * otherwise it redirects the visitor to the log in page
-   */
-  private def userAuthorization = If(User.loggedIn_? _, () => RedirectResponse(User.loginPageURL))
+  override def deleteAuthorization(p: Package) = try {
+    User.loggedIn_? &&
+      (p.owner == (User.currentUser openOr 0l) || (User.currentUser.map(_.superUser.is) openOr false))
+  } catch { case _ => false }
 
-  /** Check if the current user is allowed to change a package */
-  private def mutablePackage_?(p: Package) = try {
-      User.loggedIn_? &&
-        (p.owner == (User.currentUser openOr 0l) || (User.currentUser.map(_.superUser.is) openOr false))
-    } catch {case _ => false}
 
   /** A validation for MappedFields for checking if a date is in the future */
   private def notInFuture(field: MappedDateTime[Package])(date: Date) =
@@ -74,10 +65,13 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
   }
 
   /** The sort statement for the current list session */
-  private def sortStatement: List[QueryParam[Package]] = (FilterCategory.get match {
-    case None => Nil
-    case Some(cat) => List(By(category, cat))
-  }) ::: FilterString.split(' ').filter(_ matches """\w*""").map(x => Like(name, "%" + x + "%")).toList
+  override def listQueryParams: List[QueryParam[Package]] = 
+    super.listQueryParams :::
+    (FilterCategory.get match {
+      case None => Nil
+      case Some(cat) => List(By(category, cat))
+    }) :::
+    FilterString.split(' ').filter(_ matches """\w*""").map(x => Like(name, "%" + x + "%")).toList
 
   /** Resizes an image to the specified size */
   private def createResizedCopy(originalImage: Image, newSize: (Int, Int)): BufferedImage = {
@@ -91,27 +85,67 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
     Log.info("An image was successfully resized to " + newSize) //don't translate this
     scaled
   }
+
+
+  /**
+   * Reads the pndFile field and populates all the other fields and entries with
+   * acquired information.
+   */
+  def creationProcess(p: Package): List[FieldError] = pndFile.validate match {
+    case Nil =>
+      p.save //just so that we get an ID; neccessary for associating localized strings
+      try {
+        val pnd = PND(p.pndFile.is)
+        val pxml = PXML.fromPND(pnd) match {
+          case Full(p) => p
+          case Empty => error("We were unable to find a PXML file in your PND! Is it a valid PND file?") //TODO: translate!
+          case Failure(x, _, _) => error("Error while locating the PXML file (is your PND valid?): %error%" replace ("%error%", x)) //TODO: translate!
+        }
+
+        pxml.validateId() //throws exceptions with explanations
+        p.name(pxml.id)
+
+        pxml.validateVersion() //throws exceptions with explanations
+        p.version.fromTuple(pxml.version)
+
+        //The description will be Nil automatically if none were found.
+        if(pxml.description.length == 0)
+          S.warning("The PND didn't contain any valid content descriptions; no descriptions will be shown!") //TODO: translate!
+
+        pxml.description.foreach(d => LocalizedPackageDescription
+                                 .create.owner(this).string(d._1).locale(d._2).save)
+
+        //The title will be Nil automatically if none were found.
+        if(pxml.title.length == 0)
+          S.warning("The PND didn't contain any valid titles; no titles will be shown!") //TODO: translate!
+
+        pxml.title.foreach(t => LocalizedPackageTitle
+                           .create.owner(this).string(t._1).locale(t._2).save)
+
+        pnd.PNGdata match {
+          case Full(image) => updateImages(image)
+          case Empty => S.warning("Your PND does not contain a screenshot; no screenshot will be shown!") //TODO: translate!
+          case Failure(x, _, _) => S.warning("We tried to find a screenshot in your PND, but were " +
+                                             "unable to, so none will be displayed. The error was: %error%" replace ("%error%", x)) //TODO: translate!
+        }
+
+        p.owner(User.currentUser)
+
+        p.updatedOn(new Date())
+        
+        p.valid(true)
+
+        Nil
+      } catch {
+        //If we get errors, clean up and report browser-friendly errors
+        case e => { p.delete_!; List(FieldError(this.pndFile, Text(e.getMessage))) }
+      }
+    case error => error //if the PND itself was erroneous, then step out instantly
+  }
 }
 
 class Package extends LongKeyedMapper[Package] with IdPK {
   import Package._
-
-  def toXML =
-<package>
-  <name>{name.toString}</name>
-  <dbid>{id.toString}</dbid>
-  <category>{category.asHtml.text}</category>
-  <pndfile>{downloadLoc.createLink(NullLocParams) match {case Some(x) => S.contextPath + x; case _ => ""}}</pndfile>
-  <updated format="gmt">{updatedOn.is.toGMTString}</updated>
-  <updated format="unix">{updatedOn.is.getTime / 1000}</updated>
-  <version format="hex-32bit">{version.toString}</version>
-  <version format="decimal">{version.toHumanReadable}</version>
-  <screenshot>{S.contextPath + "/screenshot/" + obscurePrimaryKey(this) + ".png"}</screenshot>
-  {PND(pndFile).PXMLdata openOr <PXML></PXML>}
-</package>
-
-  def toListXML = 
-    <package><name>{name.toString}</name><category>{category.asHtml.text}</category><version format="hex-32bit">{version.toString}</version><updated format="unix">{(updatedOn.is.getTime / 1000).toString}</updated><details>{S.contextPath + "/api/package/" + obscurePrimaryKey(this) + ".xml"}</details></package>
 
   //This should actually be in the Meta singleton, but I don't want to use reflection
   def allEntries: List[Entry] =
@@ -125,12 +159,14 @@ class Package extends LongKeyedMapper[Package] with IdPK {
   object owner extends MappedLongForeignKey(this, User) with ShowInRichSummary with Sortable[Long] {
     override def displayName = "Owner" //TODO: translate!
     override def asHtml = Text(User.findByKey(is).map(_.nickname.is) openOr "Unknown") //TODO: translate!
+    def asXML = <owner>{asHtml.text}</owner>
   }
 
   object updatedOn extends MappedDateTime(this) with ShowInRichSummary with Sortable[Date] {
     override def displayName = "Updated" //TODO: translate!
     override def validations = super.validations ::: List(notInFuture(this) _)
     override def asHtml = dateAsHtml(is)
+    def asXML = <updatedon>{is.getTime / 1000}</updatedon>
   }
 
   object pndFile extends MappedBinary(this) with Editable with ShowInDigest {
@@ -153,6 +189,8 @@ class Package extends LongKeyedMapper[Package] with IdPK {
       set(file.file) //store the binary information of the file
       
     override def asHtml = <a href={downloadLoc.createLink(NullLocParams)} class="downloadlink">{downloadLoc.linkText openOr "Download"}</a> //TODO: translate!
+
+    def asXML = <xml:group />
   }
 
   object name extends MappedPoliteString(this, 64) with ShowInDigest with Sortable[String] {
@@ -203,6 +241,8 @@ class Package extends LongKeyedMapper[Package] with IdPK {
 
     override def asHtml = Text(toHumanReadable)
   }
+
+  object valid extends MappedBoolean(this)
 
   object description extends ShowInDetail {
     def displayHtml = Text("Description") //TODO: translate!
@@ -286,56 +326,4 @@ class Package extends LongKeyedMapper[Package] with IdPK {
     screenshot(shotData.toByteArray)
   }
 
-  /**
-   * Reads the pndFile field and populates all the other fields and entries with
-   * acquired information.
-   */
-  def doUpdateProcess(): List[FieldError] = pndFile.validate match {
-    case Nil =>
-      this.save //just so that we get an ID; neccessary for associating localized strings
-      try {
-        val pnd = PND(pndFile.is)
-        val pxml = PXML.fromPND(pnd) match {
-          case Full(p) => p
-          case Empty => error("We were unable to find a PXML file in your PND! Is it a valid PND file?") //TODO: translate!
-          case Failure(x, _, _) => error("Error while locating the PXML file (is your PND valid?): " + x) //TODO: translate!
-        }
-
-        pxml.validateId() //throws exceptions with explanations
-        name(pxml.id)
-
-        pxml.validateVersion()
-        version.fromTuple(pxml.version)
-
-        //The description will be Nil automatically if none were found.
-        if(pxml.description.length == 0)
-          S.warning("The PND didn't contain any valid content descriptions; no descriptions will be shown!") //TODO: translate!
-
-        pxml.description.foreach(d => LocalizedPackageDescription
-                                 .create.owner(this).string(d._1).locale(d._2).save)
-
-        //The title will be Nil automatically if none were found.
-        if(pxml.title.length == 0)
-          S.warning("The PND didn't contain any valid titles; no titles will be shown!") //TODO: translate!
-          
-        pxml.title.foreach(t => LocalizedPackageTitle
-                           .create.owner(this).string(t._1).locale(t._2).save)
-
-        pnd.PNGdata match {
-          case Full(image) => updateImages(image)
-          case Empty => S.warning("Your PND does not contain a screenshot; no screenshot will be shown!") //TODO: translate!
-          case Failure(x, _, _) => S.warning("We tried to find a screenshot in your PND, but were " +
-                                             "unable to, so none will be displayed. The error was: " + x) //TODO: translate!
-        }
-
-        owner(User.currentUser)
-        updatedOn(new Date())
-
-        Nil
-      } catch {
-        //If we get errors, clean up and report browser-friendly errors
-        case e => {this.delete_!; List(FieldError(this.pndFile, Text(e.getMessage)))}
-      }
-    case error => error //if the PND itself was erroneous, then step out instantly
-  }
 }
