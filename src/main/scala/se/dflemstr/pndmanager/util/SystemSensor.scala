@@ -6,18 +6,39 @@ import net.liftweb.widgets.flot._
 import comet._
 import java.util.Date
 
-object SystemSensor extends java.lang.Runnable {
+// The actor "messages" that the Sensor uses to communicate with
 
+/** Send this to the DataAccumulator to add an actor subscription */
+case class AddListener(actor: Actor)
+
+/** Send this to the DataAccumulator to unsubscribe an actor */
+case class RemoveListener(actor: Actor)
+
+/** Gets sent out by the DataAccumulator as a direct response to AddListener */
+case class InitialData(data: FlotInfo)
+
+/** Gets sent out by the DataAccumulator whenever new data is available */
+case class NewData(data: FlotNewData)
+
+/** Internal message that is used to give the DataAccumulator more data to dispatch */
+case class Update(time: Long, data: List[Double])
+
+/** A system sensor that periodically sends out data about the system status */
+object SystemSensor extends java.lang.Runnable {
   @volatile private var initialized = false
+  
+  /** Makes the sensor start emmitting data */
   def start() = synchronized {
     if(!initialized) {
       initialized = true
-      DataAccumulator.start()
       new Thread(this).start()
     }
   }
 
+  /** Don't use this */
   override def run() : Unit = {
+    initialized = true
+    DataAccumulator.start()
     while(true)
     {
       val time = new Date().getTime
@@ -33,6 +54,7 @@ object SystemSensor extends java.lang.Runnable {
   }
 }
 
+/** Accumulates data emmitted by the SystemSensor and creates graph data out of it */
 object DataAccumulator extends Actor {
   val MaxData = 100;
 
@@ -88,10 +110,3 @@ object DataAccumulator extends Actor {
     }
   }
 }
-
-case class AddListener(actor: Actor)
-case class RemoveListener(actor: Actor)
-case class InitialData(data: FlotInfo)
-case class NewData(data: FlotNewData)
-
-case class Update(time: Long, data: List[Double])

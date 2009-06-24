@@ -24,6 +24,11 @@ import java.io.ByteArrayOutputStream
 
 import _root_.se.dflemstr.pndmanager.util._
 
+import display._
+
+//TODO: This file is far to complex! Outsource code in traits!
+
+/** The MetaMapper for package objects */
 object Package extends Package with LongKeyedMetaMapper[Package] {
   //--> for the database:
   override def fieldOrder = List(name, category, version, owner, updatedOn, pndFile)
@@ -31,30 +36,14 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
 
   //--> for the display system:
 
-  /** The number of items displayed per page */
-  object DisplayItemsPerPage extends SessionVar[Int](5)
-
-  val itemCountAlternatives = List(2, 5, 10, 20, 50).map(x => (x.toString, x.toString))
-
-  /** Decides whether we should show RichSummary entries or not */
-  object RichDisplay extends SessionVar[Boolean](false)
-
   /** Contains the "search string" provided by the user */
   object FilterString extends SessionVar[String]("")
 
   object FilterCategory extends SessionVar[Option[Category]](None)
 
-  def filterCategoryAlternatives = {
+  def filterCategoryAlternatives = { //TODO: translate!
     ("0", "No filter") :: Category.findAll.map(x => (x.id.toString, x.name.toString)).toList
   }
-
-  /** The index of the first item to display */
-  object FirstItemIndex extends SessionVar[Int](0)
-
-  /** Contains all the "sortings" (sort directions) for sortable entries */
-  object Sortings extends SessionVar[mutable.Map[Sortable[_], Option[AscOrDesc]]] (
-    mutable.Map(allEntries.filter(_.isInstanceOf[Sortable[_]]).map(entry => (entry.asInstanceOf[Sortable[_]], None)): _*)
-  )
 
   //--> for the internals of Package:
 
@@ -84,65 +73,11 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
     try {Text(formatter.format(date))} catch { case _ => <em>Corrupted</em>} //TODO: translate!
   }
 
-  /** Check if a path provides a package index at its end */
-  private def checkValidity(path: ParsePath, subPath: List[String]) = 
-    path.wholePath.startsWith(subPath) && path.wholePath.length == (subPath.length + 1) &&
-      find(path.wholePath.last).isDefined
-
   /** The sort statement for the current list session */
   private def sortStatement: List[QueryParam[Package]] = (FilterCategory.get match {
     case None => Nil
     case Some(cat) => List(By(category, cat))
-  }) :::
-  (for {
-      toSort <- Sortings
-      if(toSort._2 != None)
-    } yield OrderBy(toSort._1, toSort._2 match {
-        case Some(n) => n
-        case _ => null
-      })).toList ::: FilterString.split(' ').filter(_ matches """\w*""").map(x => Like(name, "%" + x + "%")).toList
-
-  /** Creates a form for editing a package */
-  private def makeForm(oldPackage: Package, submitMsg: String)(template: NodeSeq) = {
-    val origin = S.referer openOr "/"
-    val thisSnippet = S.currentSnippet
-    val pkg = create
-
-    /** Closure for creating the form */
-    def makePage(html: NodeSeq): NodeSeq = {
-      /** Make a form list of all the entries */
-      def doEntries(temp: NodeSeq): NodeSeq = (for {
-          entry <- allEntries
-          if(entry match {
-              case x: Editable => true
-              case _ => false
-            })
-
-          instanceField = getActualBaseField(pkg, entry.asInstanceOf[Editable])
-        } yield bind("entry", temp,
-                     "name" -> instanceField.displayHtml,
-                     "input" -> instanceField.toForm)).flatMap(x => x) //I like one-liners...
-
-      /** The submit callback */
-      def onSubmit() = pkg.doUpdateProcess() match {
-        case Nil =>
-          pkg.save
-          if(submitMsg != "") S.notice(submitMsg)
-          if(oldPackage != null) oldPackage.delete_!
-          S.redirectTo(origin)
-        case error =>
-          S.error(error)
-          thisSnippet.foreach(S.mapSnippet(_, makePage))
-      }
-
-      bind("form", html,
-           "entry" -> doEntries _,
-           "submit"-> ((x: NodeSeq) => SHtml.submit(x.text, onSubmit _)),
-           "denied" -> Nil)
-    }
-
-    makePage(template)
-  }
+  }) ::: FilterString.split(' ').filter(_ matches """\w*""").map(x => Like(name, "%" + x + "%")).toList
 
   /** Resizes an image to the specified size */
   private def createResizedCopy(originalImage: Image, newSize: (Int, Int)): BufferedImage = {
@@ -153,230 +88,9 @@ object Package extends Package with LongKeyedMetaMapper[Package] {
                        RenderingHints.VALUE_INTERPOLATION_BICUBIC)
     g.drawImage(originalImage, 0, 0, newSize._1, newSize._2, null)
     g.dispose();
-    Log.info("An image was successfully resized to " + newSize)
+    Log.info("An image was successfully resized to " + newSize) //don't translate this
     scaled
   }
-
-  /** List packages between start and count using the listParams */
-  private def findForList(start: Long, count: Int): List[Package] =
-    findAll(StartAt[Package](start) :: MaxRows[Package](count) ::
-            findForListParams :_*)
-
-  /** The parameters used for the listing */
-  private def findForListParams: List[QueryParam[Package]] = sortStatement
-
-  /** Provides snippets for various occasions */
-  private def listSnippet(listPath: List[String], viewPath: List[String], deletePath: List[String],
-                          snippetName: String) = new DispatchLocSnippets {
-    /** Creates a relative link out of a path */
-    def s(path: List[String]) = path.mkString("/", "/", "")
-    val listPathString = s(listPath)
-    val viewPathString = s(viewPath)
-    val deletePathString = s(deletePath)
-
-    /** Check to see if this snippet applies */
-    val dispatch: PartialFunction[String, NodeSeq => NodeSeq] = {
-      case `snippetName` => doList
-    }
-
-    /** Create a list of packages */
-    def doList(in: NodeSeq): NodeSeq = {
-      /** Get all the visible entries from the package */
-      def entries(p: Package) = p.allEntries.filter(_ match {
-          case x: Visible if(if(RichDisplay)
-                                x.isVisibleIn(Appearance.RichSummary)
-                             else
-                                x.isVisibleIn(Appearance.Summary)) => true
-          case _ => false
-        }).map(_.asInstanceOf[Visible])
-
-      /**
-       * Create classes that can identify a field by count.
-       * They are returned in the form of "name-1 odd"
-       */
-      def countClass(name: String, count: Int) =
-        Text(name + "-" + count + " " + (if(count % 2 == 0) "even" else "odd"))
-
-      /** Automatically binds a 'class'-attribute to count classes */
-      def countClassBinder(name: String, count: Int) =
-        FuncAttrBindParam("class", _ => countClass(name, count), "class")
-
-      /** Creates a "Previous Page" link */
-      def prev(itemsPerPage: Int, redraw: () => JsCmd)(in: NodeSeq): NodeSeq =
-        if(FirstItemIndex < itemsPerPage)
-          Nil
-        else
-          SHtml.a(() => {FirstItemIndex(0 max (FirstItemIndex.toInt - DisplayItemsPerPage.toInt)); redraw()}, in)
-
-      /** Creates a "Next Page" link */
-      def next(itemsPerPage: Int, length: Int, redraw: () => JsCmd)(in: NodeSeq): NodeSeq =
-        if (length < itemsPerPage + 1)
-          Nil
-        else
-          SHtml.a(() => {FirstItemIndex(FirstItemIndex.toInt + DisplayItemsPerPage.toInt); redraw()}, in)
-
-      /** Creates headers for the list */
-      def doHeaderItems(redraw: () => JsCmd)(in: NodeSeq): NodeSeq = {
-        var headerCount = 0
-        entries(Package.this).flatMap(f => {
-          headerCount += 1
-          bind("header", in,
-            "name" -> (f match {
-              case s: Sortable[_] => SHtml.a(() => {Sortings(s) match {
-                  case None => Sortings(s) = Some(Descending)
-                  case Some(Descending) => Sortings(s) = Some(Ascending)
-                  case Some(Ascending) => Sortings(s) = None
-                }; redraw()}, s.displayHtml)
-              case _ => f.displayHtml
-            }),
-            FuncAttrBindParam("class", _ => Text((f match {
-              case s: Sortable[_] => Sortings(s) match {
-                case Some(Ascending) => "sortable header ascending"
-                case Some(Descending) => "sortable header descending"
-                case None => "sortable header unsorted"
-              }
-              case _ => "header"
-            }) + " " + countClass("header", headerCount)), "class")
-        )})
-      }
-
-      /** Creates all of the rows for the list */
-      def doRows(items: List[Package], itemsPerPage: Int)(in: NodeSeq): NodeSeq = {
-        var rowCount = 0
-        items.take(itemsPerPage).flatMap {c =>
-          /** Creates all the entries in a row */
-          def doRowEntries(in: NodeSeq): NodeSeq = {
-            var itemCount = 0
-            entries(c).flatMap(f => {
-              itemCount += 1
-              bind("entry", in,
-                   "value" -> f.asHtml,
-                   FuncAttrBindParam("class",_ => Text("entry " + countClass("entry", itemCount)), "class"))}
-            )
-          }
-
-          rowCount += 1
-          bind("row", in ,
-            "entry" -> doRowEntries _,
-            FuncAttrBindParam("class", _ => Text("row " + countClass("row", rowCount)), "class"),
-            "view" -> ((label: NodeSeq) => 
-              <a href={viewPathString+"/"+obscurePrimaryKey(c)}>{label}</a>),
-
-            "delete" ->((label: NodeSeq) =>
-              if(mutablePackage_?(c))
-                <a href={deletePathString+"/"+obscurePrimaryKey(c)}>{label}</a>
-              else
-                NodeSeq.Empty)
-          )}
-      }
-      val containerId = S.attr("table_container_id").open_!
-
-      /** Closure that actually creates the list */
-      def inner: NodeSeq = {
-        val itemsPerPage: Int = DisplayItemsPerPage
-
-        //the list of items to display
-        val list = findForList(FirstItemIndex.toInt, itemsPerPage + 1)
-
-        //use ajax to rerender the whole list on request
-        def redraw() = SetHtml(containerId, inner)
-
-        val richified =
-          if(RichDisplay)
-            bind("list", in,
-                 "rich" -> ((x: NodeSeq) => x),
-                 "ordinary" -> Nil)
-          else
-            bind("list", in,
-                 "rich" -> Nil,
-                 "ordinary" -> ((x: NodeSeq) => x))
-
-
-        // bind all the fields we need; this should operate faster than it looks
-        bind("list", richified,
-             "richview" -> SHtml.ajaxCheckbox(RichDisplay, v => {RichDisplay(v); redraw()}),
-             "searchbox" -> SHtml.ajaxText(FilterString, x => {FilterString(x); FirstItemIndex(0); redraw()}),
-             "categoryfilter" -> SHtml.ajaxSelect(filterCategoryAlternatives, Full(FilterCategory.get match {
-                  case None => "0"
-                  case Some(c) => c.id.toString
-                }),
-                (x: String) => {x match {
-                  case "0" | "" | null =>
-                    FilterCategory(None)
-                    FirstItemIndex(0)
-                    redraw()
-                  case s =>
-                    FilterCategory(Some(try {Category.find(s.toInt) openOr null} catch {case _ => null}))
-                    FirstItemIndex(0)
-                    redraw()
-                }}),
-
-             "clear" -> ((s: NodeSeq) => SHtml.a(() => {FilterString(""); FirstItemIndex(0); redraw()}, s)),
-             "itemsperpage" -> SHtml.ajaxSelect(itemCountAlternatives,
-                                                Full(itemsPerPage.toString),
-                                                v => {DisplayItemsPerPage(v.toInt); FirstItemIndex(0); redraw()}),
-             "pagenr" -> Text((Math.ceil(FirstItemIndex.toFloat / itemsPerPage).toInt + 1).toString),
-             "header" -> doHeaderItems(redraw _) _,
-             "row" -> doRows(list, itemsPerPage) _,
-             "prev" -> prev(itemsPerPage, redraw _) _,
-             "next" -> next(itemsPerPage, list.length, redraw _) _)
-      }
-      
-      inner
-    }
-  }
-
-  private def obscurePrimaryKey(in: Package): String = obscurePrimaryKey(in.primaryKeyField.toString)
-  private def obscurePrimaryKey(in: String): String = in
-
-  //--> for the Site Map:
-  def addMenu(path: List[String], snippetName: String): Box[Menu] =
-    Full(Menu(Loc("package.add", path, "Upload new Package", userAuthorization, //TODO: translate!
-                  Snippet(snippetName, makeForm(null, "The package was successfully added!") _)))) //TODO: translate!
-    
-  def viewMenu(path: List[String], snippetName: String): Box[Menu] =
-    Full(Menu(new Loc[Package] {
-      def name = "package.view"
-
-      override val snippets: SnippetTest = {
-        case (`snippetName`, Full(p: Package)) => displayPackage(p) _
-      }
-
-      def defaultParams = Empty
-
-      def params = Nil
-
-      val text = new Loc.LinkText(calcLinkText _)
-
-      def calcLinkText(in: Package): NodeSeq = Text("View Package") //TODO: translate!
-
-      override val rewrite: LocRewrite =
-        Full(NamedPF(name) {
-          case RewriteRequest(pp @ ParsePath(_, _, true, false), _, _) if checkValidity(pp, path) =>
-            (RewriteResponse(path), find(pp.wholePath.last).open_!)
-        })
-
-      def displayPackage(entry: Package)(in: NodeSeq): NodeSeq = {
-        def doEntries(in: NodeSeq): NodeSeq =
-          entry.allEntries.map(_ match {
-            case v: Visible =>
-              if(v.isVisibleIn(Appearance.Detail))
-                bind("entry", in, "name" -> v.displayHtml, "value" -> v.asHtml)
-              else
-                Nil
-
-            case _ => Nil
-          }).flatMap(x => x)
-
-        bind("list", in, "entry" -> doEntries _)
-      }
-
-      val link =
-        new Loc.Link[Package](path, false) {
-          override def createLink(in: Package) =
-          Full(Text(path.mkString("/", "/", "/") + obscurePrimaryKey(in)))
-        }
-    }))
 
   def listMenu(path: List[String], viewPath: List[String], deletePath: List[String],
                snippetName: String): Box[Menu] =
@@ -682,61 +396,4 @@ class Package extends LongKeyedMapper[Package] with IdPK {
       }
     case error => error //if the PND itself was erroneous, then step out instantly
   }
-}
-
-/** Marks anything that can represent an entry in a Mapper */
-trait Entry
-
-/** Marks an entry that can be edited by the user (read/write) */
-trait Editable extends BaseOwnedMappedField [Package] with Entry with Visible
-
-/** Marks an entry that appears in various appearances (read-only) */
-trait Visible extends Entry {
-  def asHtml: NodeSeq
-  def displayHtml: NodeSeq
-  def isVisibleIn(app: Appearance.Value): Boolean
-}
-
-trait Sortable[T] extends MappedField[T, Package] with Entry with Visible //We need to have SQL fields to sort
-
-/** Defines the apperances that entries can be in */
-object Appearance extends Enumeration {
-  val Digest, Summary, RichSummary, Detail = Value
-}
-
-/** Display the entry in digests, summaries/lists and detail views */
-trait ShowInDigest extends Visible {
-  def isVisibleIn(app: Appearance.Value) = app match {
-    case _ => true //This thing appears in all apearances
-  }
-}
-
-/** Display the entry in summaries/lists and detail views */
-trait ShowInSummary extends Visible {
-  def isVisibleIn(app: Appearance.Value) = app match {
-    case Appearance.Summary | Appearance.RichSummary | Appearance.Detail => true
-    case _ => false
-  }
-}
-
-/** Display the entry in summaries/lists and detail views */
-trait ShowInRichSummary extends Visible {
-  def isVisibleIn(app: Appearance.Value) = app match {
-    case Appearance.RichSummary | Appearance.Detail => true
-    case _ => false
-  }
-}
-
-/** Display the entry only in detail views */
-trait ShowInDetail extends Visible {
-  def isVisibleIn(app: Appearance.Value) = app match {
-    case Appearance.Detail => true
-    case _ => false
-  }
-}
-
-/** Use a custom method to determine if the field is visible */
-trait Custom extends Visible {
-  def isVisibleIn(app: Appearance.Value) = cond
-  def cond: Boolean
 }
