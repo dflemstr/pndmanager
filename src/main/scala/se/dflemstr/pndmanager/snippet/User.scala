@@ -19,7 +19,7 @@ class User {
 
   /** Returns the name of the user, if it has one */
   def name: NodeSeq = Text(User.currentUser
-         .map(_.niceName) openOr S.?("anonymous"))
+         .map(_.niceName) openOr "anonymous") //TODO: translate!
 
   /** Emits a warning if the user has a "default" nickname */
   def checkIfNameUnchanged(html: NodeSeq): NodeSeq = {

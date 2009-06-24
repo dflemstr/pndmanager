@@ -2,7 +2,7 @@
     <head>
         <link href="/css/item-display.css" rel="stylesheet" type="text/css" media="screen, print, projection"/>
     </head>
-    <lift:Package.deleteForm form="POST">
+    <lift:Package.delete form="POST">
         <p>
             Do you really, <em>really</em> want to delete this package?<br/>
             It will be removed instantly, and noone will be able
@@ -13,20 +13,21 @@
         </p>
         <table>
             <tbody>
-                <form:entry>
+                <delete:entry>
                     <tr>
                         <td><entry:name/></td>
                         <td><entry:value/></td>
                     </tr>
-                </form:entry>
+                </delete:entry>
             </tbody>
             <tfoot>
                 <tr>
                     <td> </td>
-                    <td><form:submit>Delete it already!</form:submit></td>
+                    <td><delete:submit>Delete it already!</delete:submit></td>
                 </tr>
             </tfoot>
         </table>
-        <form:denied>Sorry, you're not allowed to remove this package</form:denied>
-    </lift:Package.deleteForm>
+        <delete:denied>Sorry, you're not allowed to remove this package</delete:denied>
+        <delete:succeded>The package was successfully removed</delete:succeded>
+    </lift:Package.delete>
 </lift:surround>

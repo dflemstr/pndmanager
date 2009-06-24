@@ -22,6 +22,10 @@
                 <h1 style="text-align: left; float: left;">
                     <a href="/"><lift:Application.name/></a>
                 </h1>
+                <div id="ajax-loader" class="quiet" style="display: none; float: right;">
+                    <img id="ajax-image" src="/images/ajax-loader.gif" alt=""/>
+                    <span>Loading...</span>
+                </div>
             </div>
 
             <hr/>
@@ -31,9 +35,18 @@
                     xmlns:li_item="http://liftweb.net/li_item"
                     li:class="menuitem boxed"
                     li_item:class="selectedmenu boxed" />
-                <div id="ajax-loader" class="quiet" style="display: none;">
-                    <img id="ajax-image" src="/images/ajax-loader.gif" alt=""/>
-                    <span>Loading...</span>
+                <hr/>
+                <div class="boxed">
+                    <lift:User:online>
+                        Logged in as <em><lift:User.name/></em>
+                    </lift:User:online>
+                    <lift:User.offline>
+                        <lift:User.loginForm form="POST">
+                            OpenID:<br/>
+                            <user:openid/><br/>
+                            <user:submit/>
+                        </lift:User.loginForm>
+                    </lift:User.offline>
                 </div>
             </div>
 

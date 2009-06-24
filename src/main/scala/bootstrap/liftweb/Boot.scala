@@ -42,7 +42,7 @@ class Boot {
 
   private def initDispatchers() = {
     LiftRules.dispatch.append(FileDispatcher.dispatcher)
-    LiftRules.dispatch.append(RestAPI.dispatch)
+    LiftRules.dispatch.append(Package.dispatch)
   }
   
   private def initDB() = {
@@ -69,17 +69,13 @@ class Boot {
   }
   
   private def buildSiteMap() = {
-    val userMenu = Menu(Loc("userInfo", List("user", "index"), "User"), User.sitemap: _*) //TODO: translate!
+    val userMenu = Menu(Loc("user", List("user", "index"), "User"), User.sitemap: _*) //TODO: translate!
 
-    val pkgAdd = List("packages","add")
-    val pkgDelete = List("packages", "delete")
-    val pkgView = List("packages", "view")
-    val pkgList = List("packages", "list")
-    val packageMenu = Menu(Loc("packageInfo", List("packages", "index"), "Packages"), //TODO: translate!
-                           Package.listMenu(pkgList, pkgView, pkgDelete, "Package.list").open_!,
-                           Package.addMenu(pkgAdd, "Package.addForm").open_!,
-                           Package.deleteMenu(pkgDelete, "Package.deleteForm").open_!,
-                           Package.viewMenu(pkgView, "Package.view").open_!)
+    val packageMenu = Menu(Loc("package", List("packages", "index"), "Packages"), //TODO: translate!
+                           Package.listMenu("Package.list").open_!,
+                           Package.createMenu("Package.create").open_!,
+                           Package.deleteMenu("Package.delete").open_!,
+                           Package.viewMenu("Package.view").open_!)
 
     val entries = Menu(Loc("home", List("index"), "Home")) :: //TODO: translate!
                   packageMenu :: userMenu :: 
