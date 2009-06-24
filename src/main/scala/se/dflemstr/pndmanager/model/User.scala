@@ -23,6 +23,16 @@ object User extends User with MetaOpenIDProtoUser[User] {
   override val basePath: List[String] = "user" :: Nil
   def openIDVendor = SimpleOpenIdVendor
 
+  override def findOrCreate(openId: String): User =
+    find(By(this.openId, openId)) match {
+      case Full(u) => u
+      case _ =>
+        create.openId(openId).
+        nickname("change"+Helpers.randomInt(1000000000)).password(Helpers.randomString(15)).
+        email(Helpers.randomInt(100000000)+"unknown@unknown.com").
+        saveMe
+  }
+
   //This is unused, since we use external templates
   override def screenWrap = Empty
 
@@ -42,7 +52,7 @@ object User extends User with MetaOpenIDProtoUser[User] {
         case (_, Full(exp)) =>
           S.error("An exception occured: %exception%" replace ("%exception%", exp.getMessage)) //TODO: translate!
         case _ =>
-          S.error("We could not log in, because: %reason%" replace ("%reason%", fo.open_!.toString)) //TODO: translate!
+          S.error("We could not log in, because: %reason%" replace ("%reason%", fo.open_!.getMessage)) //TODO: translate!
       }
       RedirectResponse(homePage)
     }
@@ -110,20 +120,20 @@ object User extends User with MetaOpenIDProtoUser[User] {
    * The menu item for login
    */
   override def loginMenuLoc: Box[Menu] =
-    Full(Menu(Loc("user.login", loginPath, S.??("login"),
-                  If(User.notLoggedIn_? _, S.??("already.logged.in")))))
+    Full(Menu(Loc("user.login", loginPath, "Log in", //TODO: translate!
+                  If(User.notLoggedIn_? _, "Hey, you are already logged in!"))))//TODO: translate!
 
   /**
    * The menu item for logout
    */
   override def logoutMenuLoc: Box[Menu] =
-    Full(Menu(Loc("user.logout", logoutPath, S.??("logout"), testLogginIn)))
+    Full(Menu(Loc("user.logout", logoutPath, "Log out", testLogginIn)))//TODO: translate!
 
   /**
    * The menu item for editing the user
    */
   override def editUserMenuLoc: Box[Menu] =
-    Full(Menu(Loc("user.edit", editPath, S.??("edit.user"), testLogginIn)))
+    Full(Menu(Loc("user.edit", editPath, "Edit user preferences", testLogginIn)))//TODO: translate!
 
   override def createUserMenuLoc: Box[Menu] =  Empty
   override def lostPasswordMenuLoc: Box[Menu] = Empty
@@ -139,4 +149,13 @@ class User extends OpenIDProtoUser[User] {
   def getSingleton = User
 
   def ownedPackages = Package.findAll(By(Package.owner, this))
+
+  override def niceName: String = (firstName.is, lastName.is, nickname.is) match {
+    case (f, l, n) if f.length > 1 && l.length > 1 => f + " \"" + n + "\" " + l
+    case (f, _, n) if f.length > 1 => f + " (" + n + ")"
+    case (_, l, n) if l.length > 1 => "\"" + n + "\"" + l
+    case (_, _, n) => n
+  }
+
+  override def niceNameWEmailLink = <xml:group/>
 }
