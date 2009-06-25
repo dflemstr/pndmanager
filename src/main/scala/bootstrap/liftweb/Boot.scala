@@ -25,24 +25,17 @@ class Boot {
     // The location of our webapp classes
     LiftRules.addToPackages("se.dflemstr.pndmanager")
 
-    initDispatchers()
+    setHooks()
 
     initDB()
     schemifyMappers()
     createData()
-
+    
     localize()
-
+    
     buildSiteMap()
-
     initAjax()
-
     initFrameworks()
-  }
-
-  private def initDispatchers() = {
-    LiftRules.dispatch.append(FileDispatcher.dispatcher)
-    LiftRules.dispatch.append(Package.dispatch)
   }
   
   private def initDB() = {
@@ -57,30 +50,39 @@ class Boot {
                         LocalizedPackageDescription, LocalizedPackageTitle)
 
   private def createData() = {
+    //This is a hack to get categories, and might destroy category mappings on production systems
+    //TODO: make a persistent category management system
     if(Category.count == 0) {
       Props.get("pndmanager.categories", "").split(":").filter(_ matches """[\w/._\- ]+""").foreach(Category.create.name(_).save)
-      Log.info("Created some categories, count: " + Category.count)
+      Log.info("Created some categories, count: " + Category.count) //don't translate
     }
   }
 
   private def localize() = {
+    //Load localization data
+    LiftRules.resourceNames = "translations/core" ::
+                              "translations/packagesystem"::
+                              "translations/entrysystem" ::
+                              "translations/template" ::
+                              LiftRules.resourceNames
+
+    //Adjust the page locale to fit the User locale + time zone
     LiftRules.localeCalculator = r => User.currentUser.map(_.locale.isAsLocale) openOr LiftRules.defaultLocaleCalculator(r)
     LiftRules.timeZoneCalculator = r => User.currentUser.map(_.timezone.isAsTimeZone) openOr LiftRules.defaultTimeZoneCalculator(r)
   }
   
   private def buildSiteMap() = {
-    val userMenu = Menu(Loc("user", List("user", "index"), "User"), User.sitemap: _*) //TODO: translate!
+    val userMenu = Menu(Loc("user", List("user", "index"), S.?("menu.user")), User.sitemap: _*)
 
-    val packageMenu = Menu(Loc("package", List("packages", "index"), "Packages"), //TODO: translate!
+    val packageMenu = Menu(Loc("package", List("packages", "index"), S.?("menu.package")),
                            Package.listMenu("Package.list").open_!,
                            Package.createMenu("Package.create").open_!,
                            Package.deleteMenu("Package.delete").open_!,
                            Package.viewMenu("Package.view").open_!)
 
-    val entries = Menu(Loc("home", List("index"), "Home")) :: //TODO: translate!
-                  packageMenu :: userMenu :: 
-                  Menu(Loc("stats", List("stats"), "Site statistics")) :: //TODO: translate!
-                  Menu(Loc("apiinfo", List("apiinfo"), "API Information")) :: Nil  //TODO: translate!
+    val entries = Menu(Loc("home", List("index"), S.?("menu.home"))) ::
+                  packageMenu :: userMenu ::
+                  Menu(Loc("apiinfo", List("apiinfo"), S.?("menu.apiinfo"))) :: Nil
 
     LiftRules.setSiteMap(SiteMap(entries:_*))
   }
@@ -92,22 +94,22 @@ class Boot {
   }
 
   private def initFrameworks() = {
-    //Load localization data
-    LiftRules.resourceNames = "translations" :: LiftRules.resourceNames
-
     //OpenID support
     LiftRules.dispatch.append(SimpleOpenIdVendor.dispatchPF)
 
     //Init Flot
     net.liftweb.widgets.flot.Flot.init()
-
-    //Init actors
-    SystemSensor.start()
   }
 
   def setHooks() = {
     //Convert page to UTF-8 before sending
     LiftRules.early.append(makeUtf8)
+
+    //Make file download URLs usable
+    LiftRules.dispatch.append(FileDispatcher.dispatcher)
+
+    //Make the XML API URLs usable
+    LiftRules.dispatch.append(Package.dispatch)
   }
 
   private def makeUtf8(req: HttpServletRequest) {

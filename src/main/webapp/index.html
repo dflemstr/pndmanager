@@ -1,33 +1,19 @@
 <lift:surround with="default" at="content">
     <lift:User.checkIfNameUnchanged>
-        Your nickname is currently unchanged. Please go to the
-        <lift:menu.item name="user.edit">edit user</lift:menu.item> page to change it.
+        <lift:embed what="translations/index/nicknamewarning"/>
     </lift:User.checkIfNameUnchanged>
     <p>
-        Welcome to the <lift:Application.name/>!<br/>
-        Here, you can browse and download PND packages published by
-        other users for your <a href="http://openpandora.org/">OpenPandora</a> system!
+        <lift:embed what="translations/index/welcomemessage"/>
     </p>
     <lift:User.offline>
         <p>
-            The manager only allows the editing of packages for logged-in
-            users. Please <lift:menu.item name="user.login">log in</lift:menu.item>
-            to make your session interactive.
+            <lift:embed what="translations/index/loginwarning"/>
         </p>
         <p>
-            We like open technologies, and therefore use
-            the <lift:OpenID.link>OpenID</lift:OpenID.link>
-            user authorization system. If you want to log in on this site, please
-            get an OpenID account from a provider. You most likely already have
-            an OpenID account if you use some of the big social media sites
-            (get more information <a href="http://openid.net/get/">here</a>); otherwise,
-            you can get an OpenID from for example <a href="http://www.myopenid.com/">myOpenID</a><br/>
-            (<em>note</em>: do some research, myOpenID might not be the best solution for you).
+            <lift:embed what="translations/index/openidinfo"/>
         </p>
     </lift:User.offline>
     <p>
-        To browse
-        <lift:User.online>and contribute to</lift:User.online>
-        the PND repository, look in the menu to the left.
+        <lift:embed what="translations/index/managerinfo"/>
     </p>
 </lift:surround>

@@ -102,3 +102,8 @@ p {
     background: url(../images/go-previous.png) center left no-repeat;
     padding-left: 16px;
 }
+
+.loginbox table {
+    padding: 0;
+    margin: 0;
+}

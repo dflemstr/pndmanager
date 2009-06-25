@@ -48,11 +48,11 @@ object User extends User with MetaOpenIDProtoUser[User] {
         case (Full(id), _) =>
           val user = this.findOrCreate(id.getIdentifier)
           logUserIn(user)
-          S.notice("Welcome, %user%!" replace ("%user%", user.niceName)) //TODO: translate!
+          S.notice(S.?("user.login.succeded") replace ("%user%", user.niceName))
         case (_, Full(exp)) =>
-          S.error("An exception occured: %exception%" replace ("%exception%", exp.getMessage)) //TODO: translate!
+          S.error(S.?("user.login.exception") replace ("%exception%", exp.getMessage))
         case _ =>
-          S.error("We could not log in, because: %reason%" replace ("%reason%", fo.open_!.getStatusMsg)) //TODO: translate!
+          S.error(S.?("user.login.failure") replace ("%reason%", fo.open_!.getStatusMsg))
       }
       RedirectResponse(homePage)
     }
@@ -70,7 +70,7 @@ object User extends User with MetaOpenIDProtoUser[User] {
       theUser.validate match {
         case Nil =>
           theUser.save
-          S.notice("Your settings are saved!") //TODO: translate!
+          S.notice(S.??("profile.updated"))
           S.redirectTo(S.referer openOr "/")
 
         case xs =>
@@ -98,7 +98,7 @@ object User extends User with MetaOpenIDProtoUser[User] {
           field.toForm.toList.flatMap(form =>
             bind("field", xhtml,
               "name" ->(if(field.displayName == "nickname")
-                          Text("Nickname") //TODO: translate!
+                          Text("Nickname")
                         else
                           Text(field.displayName)),
               "form" -> form)
@@ -120,20 +120,20 @@ object User extends User with MetaOpenIDProtoUser[User] {
    * The menu item for login
    */
   override def loginMenuLoc: Box[Menu] =
-    Full(Menu(Loc("user.login", loginPath, "Log in", //TODO: translate!
-                  If(User.notLoggedIn_? _, "Hey, you are already logged in!"))))//TODO: translate!
+    Full(Menu(Loc("user.login", loginPath, S.??("log.in"),
+                  If(User.notLoggedIn_? _, S.??("edit.profile")))))
 
   /**
    * The menu item for logout
    */
   override def logoutMenuLoc: Box[Menu] =
-    Full(Menu(Loc("user.logout", logoutPath, "Log out", testLogginIn)))//TODO: translate!
+    Full(Menu(Loc("user.logout", logoutPath, S.??("log.out"), testLogginIn)))
 
   /**
    * The menu item for editing the user
    */
   override def editUserMenuLoc: Box[Menu] =
-    Full(Menu(Loc("user.edit", editPath, "Edit user preferences", testLogginIn)))//TODO: translate!
+    Full(Menu(Loc("user.edit", editPath, S.??("edit.profile"), testLogginIn)))
 
   override def createUserMenuLoc: Box[Menu] =  Empty
   override def lostPasswordMenuLoc: Box[Menu] = Empty

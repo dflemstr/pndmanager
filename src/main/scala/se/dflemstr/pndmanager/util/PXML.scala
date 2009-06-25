@@ -1,7 +1,7 @@
 package se.dflemstr.pndmanager.util
 
 import scala.xml._
-import net.liftweb.http.{FieldError, FieldIdentifier}
+import net.liftweb.http.{FieldError, FieldIdentifier,S}
 import net.liftweb.util.{Box,Full,Empty,Failure}
 
 object PXML {
@@ -38,7 +38,7 @@ object PXML {
  * A simple DOM tool for PXML files
  */
 case class PXML(val tree: Elem) {
-  require(tree.label == "PXML", "This isn't a PXML file!") //TODO: translate!
+  require(tree.label == "PXML", S.?("pxml.invalid"))
   import PXML._
 
   /** Utility method for field accessors below */
@@ -55,17 +55,16 @@ case class PXML(val tree: Elem) {
   /** Returns a list of FieldErrors with all the version field issues */
   def validateVersion() = rawVersionStrings.foreach(_ match {
       //fail if the string is empty
-      case null | "" => error("The version number is invalid: at least one field is empty!") //TODO: translate!
+      case null | "" => error(S.?("pxml.version.empty"))
       //otherwise, check if it can be converted to an int and is positive
       case s => try { s.toInt >= 0 } catch { 
-          case _ => error("The version number is invalid: one field contains non-integer or negative data!") //TODO: translate!
+          case _ => error(S.?("pxml.version.invalid"))
         }
     })
 
   /** Returns a list of FieldErrors with all the UniqueID issues */
   def validateId() = if (!(id matches idRegex))
-    error("The PXML has an invalid unique ID. It must match the regex \"" +
-          idRegex + "\".") //TODO: translate!
+    error(S.?("pxml.id.invalid") replace ("%regex%", idRegex))
 
   /** Returns a list of FieldErrors with all the errors that this PXML has >:-) */
   def validateAll(field: FieldIdentifier) = {

@@ -4,12 +4,10 @@
     </head>
     <lift:Package.delete form="POST">
         <p>
-            Do you really, <em>really</em> want to delete this package?<br/>
-            It will be removed instantly, and noone will be able
-            to access it ever again.
+            <lift:embed what="translations/packages/delete/warning"/>
         </p>
         <p>
-            Here's a list of what the package contains, just to confirm:
+            <lift:loc>package.delete.listlabel</lift:loc>
         </p>
         <table>
             <tbody>
@@ -23,11 +21,11 @@
             <tfoot>
                 <tr>
                     <td> </td>
-                    <td><delete:submit>Delete it already!</delete:submit></td>
+                    <td><delete:submit>
+                        <lift:loc>package.delete.deletebutton</lift:loc>
+                    </delete:submit></td>
                 </tr>
             </tfoot>
         </table>
-        <delete:denied>Sorry, you're not allowed to remove this package</delete:denied>
-        <delete:succeded>The package was successfully removed</delete:succeded>
     </lift:Package.delete>
 </lift:surround>

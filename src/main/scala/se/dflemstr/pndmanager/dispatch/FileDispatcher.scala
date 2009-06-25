@@ -35,7 +35,7 @@ object FileDispatcher {
   }
 
   def pndFile(identifier: String): Box[LiftResponse] = {
-    Log.info("A file is being downloaded: " + identifier)
+    Log.info("A file is being downloaded: " + identifier) //don't translate!
     val masterRegex = "^" + PXML.idRegex + """-(\d+\.){3}\d+\.pnd$"""
     
     if(identifier matches masterRegex) {

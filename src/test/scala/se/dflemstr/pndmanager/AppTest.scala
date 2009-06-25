@@ -31,8 +31,12 @@ object App extends Specification {
           }
         }
         if (file.isFile && handledXHtml(file.getName)) {
-          PCDataXmlParser(new java.io.FileInputStream(file.getAbsolutePath)) match {
-            case Full(_) => // file is ok
+          try {
+            PCDataXmlParser(new java.io.FileInputStream(file.getAbsolutePath)) match {
+              case Full(_) => // file is ok
+              case _ => failed = file :: failed
+            }
+          } catch {
             case _ => failed = file :: failed
           }
         }

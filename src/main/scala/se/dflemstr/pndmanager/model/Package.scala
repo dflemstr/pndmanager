@@ -31,22 +31,33 @@ object Package extends Package with LongKeyedMetaMapper[Package]
 
   override val baseName = "package"
 
-  override val createMenuName = "Upload new package" //TODO: translate!
-  override val viewMenuName = "View package" //TODO: translate!
-  override val listMenuName = "Browse packages" //TODO: translate!
-  override val deleteMenuName = "Delete package"
+  override def createMenuName = S.?("package.create")
+  override def viewMenuName = S.?("package.view")
+  override def listMenuName = S.?("package.list")
+  override def deleteMenuName = S.?("package.delete")
+
+  override def createSuccededMsg = S.?("package.create.succeded")
+  override def deleteSuccededMsg = S.?("package.delete.succeded")
+
+  override def createDeniedMsg = S.?("package.create.denied")
+  override def deleteDeniedMsg = S.?("package.delete.denied")
+
+  override def createSubmitButton = S.?("package.create.uploadbutton")
+  override def deleteSubmitButton = S.?("package.delete.deletebutton")
 
   override lazy val digestAccessNode = "repository"
   override lazy val elementAccessNode = "package"
   override def createTag(in: NodeSeq): Elem = <pndmanager-api>{in}</pndmanager-api>
+  override def createItem(in: NodeSeq): Elem = <package>{in}</package>
 
   /** Contains the "search string" provided by the user */
   object FilterString extends SessionVar[String]("")
 
   object FilterCategory extends SessionVar[Option[Category]](None)
 
-  def filterCategoryAlternatives = { //TODO: translate!
-    ("0", "No filter") :: Category.findAll.map(x => (x.id.toString, x.name.toString)).toList
+  def filterCategoryAlternatives = {
+    ("0", S.?("package.categorylist.nofilter")) ::
+    Category.findAll.map(x => (x.id.toString, x.name.toString)).toList
   }
 
   override def createAuthorization = User.loggedIn_?
@@ -77,8 +88,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
 
   /** A validation for MappedFields for checking if a date is in the future */
   private def notInFuture(field: MappedDateTime[Package])(date: Date) =
-    List(FieldError(field, Text("Fatal: We tried to create the package in the future." +
-                                "Don't ask how that happened, neither we nor you want to know."))) //TODO: translate!
+    List(FieldError(field, Text(S.?("package.error.future"))))
       .filter(_ => date.getTime >= System.currentTimeMillis)
 
   /** Converts a date to HTML, automatically using the logged-in user's preferences */
@@ -86,7 +96,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
     val formatter = DateFormat.getDateInstance(DateFormat.LONG, S.locale)
     formatter.setTimeZone(S.timeZone)
 
-    try {Text(formatter.format(date))} catch { case _ => <em>Corrupted</em>} //TODO: translate!
+    try {Text(formatter.format(date))} catch { case _ => <em>{S.?("package.updated.corrupted")}</em>}
   }
 
   private def findBestTranslation(strings: List[LocalizedString[_]]): (String, NodeSeq) = {
@@ -102,7 +112,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
 
     best match {
       case Some(Some(str)) => (str.locale, Text(str.string))
-      case _ => ("", <em>({"No translation found for %locale%" replace ("%locale%", S.locale.toString)})</em>) //TODO: translate!
+      case _ => ("", <em>({S.?("package.error.notranslation") replace ("%locale%", S.locale.toString)})</em>)
     }
   }
 
@@ -154,8 +164,8 @@ object Package extends Package with LongKeyedMetaMapper[Package]
         val pnd = PND(p.pndFile.is)
         val pxml = PXML.fromPND(pnd) match {
           case Full(p) => p
-          case Empty => error("We were unable to find a PXML file in your PND! Is it a valid PND file?") //TODO: translate!
-          case Failure(x, _, _) => error("Error while locating the PXML file (is your PND valid?): %error%" replace ("%error%", x)) //TODO: translate!
+          case Empty => error(S.?("package.error.nopxmlfound"))
+          case Failure(x, _, _) => error(S.?("package.error.invalidpxml") replace ("%error%", x))
         }
 
         pxml.validateId() //throws exceptions with explanations
@@ -166,23 +176,22 @@ object Package extends Package with LongKeyedMetaMapper[Package]
 
         //The description will be Nil automatically if none were found.
         if(pxml.description.length == 0)
-          S.warning("The PND didn't contain any valid content descriptions; no descriptions will be shown!") //TODO: translate!
+          S.warning(S.?("package.warning.nodescriptions"))
 
         pxml.description.foreach(d => LocalizedPackageDescription
                                  .create.owner(p).string(d._1).locale(d._2).save)
 
         //The title will be Nil automatically if none were found.
         if(pxml.title.length == 0)
-          S.warning("The PND didn't contain any valid titles; no titles will be shown!") //TODO: translate!
+          S.warning(S.?("package.warning.notitles"))
 
         pxml.title.foreach(t => LocalizedPackageTitle
                            .create.owner(p).string(t._1).locale(t._2).save)
 
         pnd.PNGdata match {
           case Full(image) => updateImages(p, image)
-          case Empty => S.warning("Your PND does not contain a screenshot; no screenshot will be shown!") //TODO: translate!
-          case Failure(x, _, _) => S.warning("We tried to find a screenshot in your PND, but were " +
-                                             "unable to, so none will be displayed. The error was: %error%" replace ("%error%", x)) //TODO: translate!
+          case Empty => S.warning("Your PND does not contain a screenshot; no screenshot will be shown!")
+          case Failure(x, _, _) => S.warning(S.?("package.warning.invalidscreenshot") replace ("%error%", x))
         }
 
         p.owner(User.currentUser)
@@ -209,42 +218,45 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   def getSingleton = Package
     
   def downloadLoc = Loc("package-" + name.is + "-" + version.is,
-                        List("package", name.is + "-" + version.toHumanReadable + ".pnd"), "Download") //TODO: translate
+                        List("package", name.is + "-" + version.toHumanReadable + ".pnd"),
+                        S.?("package.download"))
 
   object owner extends MappedLongForeignKey(this, User)
       with ShowInRichSummary[Package] with Sortable[Long, Package] with APIExposed[Package] {
-    override def displayName = "Owner" //TODO: translate!
-    override def asHtml = Text(User.findByKey(is).map(_.niceName) openOr "Unknown") //TODO: translate!
+    override def displayName = S.?("package.owner")
+    override def asHtml = Text(User.findByKey(is).map(_.niceName) openOr S.?("package.owner.unknown"))
     def asXML = <owner>{asHtml.text}</owner>
   }
 
   object updatedOn extends MappedDateTime(this) with ShowInRichSummary[Package] with Sortable[Date, Package] with APIExposed[Package] {
-    override def displayName = "Updated" //TODO: translate!
+    override def displayName = S.?("package.updated")
     override def validations = super.validations ::: List(notInFuture(this) _)
     override def asHtml = dateAsHtml(is)
     def asXML = <updatedon>{is.getTime / 1000}</updatedon>
   }
 
-  object pndFile extends MappedBinary(this) with Editable[Package] with ShowInDigest[Package] with APIExposed[Package] {
-    override def displayName = "PND File"
+  object pndFile extends MappedBinary(this) with Editable[Package]
+      with ShowInDigest[Package] with APIExposed[Package] {
+    override def displayName = S.?("package.pndfile")
     override def validations = notZeroSize _ :: containsPXML _ :: super.validations
 
     def notZeroSize(data: Array[Byte]) =
-      List(FieldError(this, Text("The PND file didn't contain anything at all!"))) //TODO: translate!
+      List(FieldError(this, Text(S.?("package.error.emptypnd"))))
         .filter(_ => data == null || data.length == 0)
 
     //the second tuple element here contains List[FieldError]
     def containsPXML(data: Array[Byte]) = try {
       PND(data).PXMLdata.open_!
       Nil
-    } catch {case ex => List(FieldError(this, Text("The PND field did not contain valid PXML data! " + ex.getMessage)))} //TODO: translate!
+    } catch {case ex => List(FieldError(this,
+        Text(S.?("package.error.invalidpnd") replace("%error%", ex.getMessage))))}
 
     override def _toForm = Full(SHtml.fileUpload(storeTheFile))
 
     def storeTheFile(file: FileParamHolder) =
       set(file.file) //store the binary information of the file
       
-    override def asHtml = <a href={downloadLoc.createLink(NullLocParams)} class="downloadlink">{downloadLoc.linkText openOr "Download"}</a> //TODO: translate!
+    override def asHtml = <a href={downloadLoc.createLink(NullLocParams)} class="downloadlink">{downloadLoc.linkText openOr S.?("package.download")}</a>
 
     def asXML = <pndfile>{downloadLoc.createLink(NullLocParams) match {
           case Some(x) => S.contextPath + x
@@ -255,7 +267,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
   object name extends MappedPoliteString(this, 64) with ShowInDigest[Package]
       with Sortable[String, Package] with APIExposed[Package] {
-    override def displayName = "Name" //TODO: translate!
+    override def displayName = S.?("package.name")
 
     override def dbIndexed_? = true
     
@@ -264,8 +276,8 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
   object category extends MappedLongForeignKey(this, Category) with ShowInSummary[Package]
       with Sortable[Long, Package] with Editable[Package] with APIExposed[Package] {
-    override def displayName = "Category" //TODO: translate!
-    val unknown = "Unknown" //TODO: translate!
+    override def displayName = S.?("package.category")
+    def unknown = S.?("package.category.unknown")
 
     override def asHtml = Category.find(is).map(_.name.asHtml) openOr Text(unknown)
 
@@ -279,7 +291,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     //The actual value of this is a 16 char hex string, so
     //that it becomes easy to sort versions since it can be done alphabetically
     // (And I didn't want to create a custom MappedField just for this)
-    override def displayName = "Version" //TODO: translate!
+    override def displayName = S.?("package.version")
 
     protected def pad(value: String) =
       "0" * (8 - value.length) + value
@@ -316,7 +328,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
   object description extends ShowInDetail[Package] {
     
-    def displayHtml = Text("Description") //TODO: translate!
+    def displayHtml = Text(S.?("package.description"))
 
     def asHtml = {
       val descriptions = LocalizedPackageDescription.findAll(
@@ -326,7 +338,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   }
 
   object title extends ShowInRichSummary[Package] {
-    def displayHtml = Text("Title") //TODO: translate!
+    def displayHtml = Text(S.?("package.title"))
 
     def asHtml = {
       val titles = LocalizedPackageTitle.findAll(
@@ -336,7 +348,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   }
 
   object thumbnail extends MappedBinary(this) with Visible[Package] {
-    override def displayHtml = Text("Preview") //TODO: translate!
+    override def displayHtml = Text(S.?("package.thumbnail"))
 
     def isVisibleIn(app: Appearance.Value) = app match {
       case Appearance.RichSummary => true
@@ -354,7 +366,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   }
 
   object screenshot extends MappedBinary(this) with ShowInDetail[Package] with APIExposed[Package] {
-    override def displayHtml = Text("Screenshot") //TODO: translate!
+    override def displayHtml = Text(S.?("package.screenshot"))
 
     def isEmpty = is == null || is.length == 0
 

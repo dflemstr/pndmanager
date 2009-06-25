@@ -5,17 +5,16 @@
     <lift:Package.list list_container_id="packagelist">
         <div id="packagelist">
             <div>
-                Search name: <list:searchbox/>
+                <lift:loc>package.list.searchname</lift:loc><list:searchbox/>
                 <list:clear>
                     <img src="../images/clear.png" alt="Clear" style="position: relative; top: 3px;"/>
                 </list:clear>
-                by category: <list:categoryfilter/>
+                <lift:loc>package.list.bycategory</lift:loc> <list:categoryfilter/>
             </div>
             <div>
-                Results per page:<list:itemsperpage/>
-                <list:richview/>Rich view
+                <lift:loc>package.list.resultspp</lift:loc><list:itemsperpage/>
+                <list:richview/><lift:loc>package.list.richview</lift:loc>
             </div>
-            
             <list:ordinary>
                 <table class="ordinary-list">
                     <thead>
@@ -58,19 +57,21 @@
                                     <div entry:class=""><entry:value/></div>
                                 </row:entry>
                                 <row:view>
-                                    <div class="details">Details</div>
+                                    <div class="details"><lift:loc>packages.list.details</lift:loc></div>
                                 </row:view>
                                 <row:delete>
-                                    <div class="delete">Delete</div>
+                                    <div class="delete"><lift:loc>packages.list.delete</lift:loc></div>
                                 </row:delete>
                             </div>
                         </list:row>
                     </div>
                 </div>
             </list:rich>
-            <div>Page <list:pagenr/></div>
-            <div class="prev"><list:prev>Previous page</list:prev></div>
-            <div class="next"><list:next>Next page</list:next></div>
+            <div class="pagenavigator">
+                <div class="prev"><list:prev><lift:loc>package.list.prevpage</lift:loc></list:prev></div>
+                <div class="next"><list:next><lift:loc>package.list.nextpage</lift:loc></list:next></div>
+                <div class="pagenr"><lift:loc>package.list.page</lift:loc> <list:pagenr/></div>
+            </div>
         </div>
     </lift:Package.list>
 </lift:surround>

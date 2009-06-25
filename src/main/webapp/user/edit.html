@@ -1,15 +1,12 @@
 <lift:surround with="default" at="content">
     <p>
-        This page lists your current user settings. 
-        Everything here can be changed to your liking.
+        <lift:embed what="translations/user/edit/description"/>
     </p>
     <p>
-        Note that the Locale setting changes the language of the page 
-        (if the specified locale is available).
+        <lift:embed what="translations/user/edit/localenote"/>
     </p>
     <p>
-        Also note that if you specify your name below, it WILL be shown on
-        this webpage.
+        <lift:embed what="translations/user/edit/namenote"/>
     </p>
     <lift:User.editForm form="POST">
         <table>

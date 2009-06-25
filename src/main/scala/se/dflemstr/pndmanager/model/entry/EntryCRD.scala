@@ -26,10 +26,10 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
 
   override def dbTableName = baseName + "s"
   
-  def createMenuName = "Create " + baseName
-  def viewMenuName = "View " + baseName
-  def listMenuName = "List " + baseName + "s"
-  def deleteMenuName = "Delete " + baseName
+  def createMenuName = S.?("entry.create") replace ("%basename%", baseName)
+  def viewMenuName = S.?("entry.view") replace ("%basename%", baseName)
+  def listMenuName = S.?("entry.list") replace("%basename%", baseName + "s")
+  def deleteMenuName = S.?("entry.delete") replace ("%basename%", baseName)
 
   def createPath = List(baseName + "s", "create")
   def viewPath = List(baseName + "s", "view")
@@ -41,6 +41,15 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
   def listAction = "list"
   def viewAction = "view"
   def deleteAction = "delete"
+
+  def createSuccededMsg = "Created"
+  def deleteSuccededMsg = "Deleted"
+
+  def createDeniedMsg = "Can't create!"
+  def deleteDeniedMsg = "Can't delete!"
+
+  def createSubmitButton = "Create"
+  def deleteSubmitButton = "Delete"
 
   def createBindParams: List[BindParam] = Nil
   def viewBindParams: List[BindParam] = Nil
@@ -186,7 +195,7 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
       def onSubmit() = creationProcess(mapper) match {
         case Nil =>
           mapper.save
-          S.notice(html \\ "succeded")
+          S.notice(createSuccededMsg)
           S.redirectTo(backdoor)
         case error =>
           S.error(error)
@@ -195,9 +204,7 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
 
       bind(createAction, html,
            "entry" -> doEntries _ ::
-           "submit"-> ((x: NodeSeq) => SHtml.submit(x.text, onSubmit _)) ::
-           "denied" -> Nil ::
-           "succeded" -> Nil ::
+           "submit"-> ((_: NodeSeq) => SHtml.submit(createSubmitButton, onSubmit _)) ::
            createBindParams: _*)
     }
 
@@ -208,7 +215,8 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
 
   def createMenu(path: List[String], snippetName: String): Box[Menu] =
     Full(Menu(Loc(baseName + "." + createAction, path, createMenuName, 
-                  If(createAuthorization _, () => RedirectResponse(origin)), Snippet(snippetName, createMapper _))))
+                  If(createAuthorization _, () => RedirectResponse(origin)),
+                  Snippet(snippetName, createMapper _))))
 
   def listSnippet(viewPath: List[String],
                   deletePath: List[String],
@@ -264,7 +272,7 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
                   case None => Sortings(x) = Some(Descending)
                   case Some(Descending) => Sortings(x) = Some(Ascending)
                   case Some(Ascending) => Sortings(x) = None
-                  case s => Log.info("A list sorting problem has occured! Involved value: " + s)
+                  case s => Log.info("A list sorting problem has occured! Involved value: " + s) //don't translate
                 }; redraw()}, s.displayHtml)
               case _ => f.displayHtml
             }),
@@ -393,22 +401,20 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
         if(deleteAuthorization(x))
           deleteMapper(x)
         else
-          ((h: NodeSeq) => h \\ "denied")
+          (_ => Text(deleteDeniedMsg))
     }
 
     def deleteMapper(m: MapperType)(template: NodeSeq): NodeSeq = {
       val backdoor = origin
       def doSubmit() = {
         m.delete_!
-        S.notice(template \\ "succeded")
+        S.notice(deleteSuccededMsg)
         S.redirectTo(backdoor)
       }
 
       bind(deleteAction, template,
            "entry" -> doEntries(m.entries, Appearance.Detail) _ ::
-           "submit" -> ((text: NodeSeq) => SHtml.submit(text.text, doSubmit _)) ::
-           "denied" -> Nil ::
-           "succeded" -> Nil ::
+           "submit" -> ((_: NodeSeq)  => SHtml.submit(deleteSubmitButton, doSubmit _)) ::
            deleteBindParams: _*)
     }
 

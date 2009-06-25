@@ -10,16 +10,17 @@ trait RESTApi[T, M <: EntryProvider[T, M]] extends EntryCRD[T, M] with XMLApiHel
   this: M =>
 
   def createTag(in: NodeSeq): Elem = <item-api>{in}</item-api>
+  def createItem(in: NodeSeq): Elem = <item>{in}</item>
 
   lazy val apiNode = "api"
   lazy val elementAccessNode = "item"
   lazy val digestAccessNode = "digest"
 
   private def toXML(item: M, appearance: Appearance.Value): NodeSeq =
-    item.entries.map(_ match {
-      case a: APIExposed[_] => List(a.asXML) ++ Text("\n")
+    createItem(item.entries.map(_ match {
+      case a: APIExposed[_] => Text("    ") :: a.asXML :: Text("\n") :: Nil
       case _ => Nil
-    }).flatMap(x => x)
+    }).flatMap(x => x))
 
   def dispatch: LiftRules.DispatchPF = {
     case Req(List(`apiNode`, `elementAccessNode`, id), "xml", GetRequest) =>

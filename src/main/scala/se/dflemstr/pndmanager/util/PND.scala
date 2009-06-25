@@ -2,7 +2,7 @@ package se.dflemstr.pndmanager.util
 
 import scala.xml._
 import net.liftweb.util.{Box,Full,Empty,Failure}
-import net.liftweb.http.{FieldError, FieldIdentifier}
+import net.liftweb.http.{FieldError, FieldIdentifier, S}
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 import java.io.ByteArrayInputStream
@@ -37,7 +37,7 @@ case class PND(val data: Array[Byte]) {
             val pxmlData = pxmlSlice take (endPos + PXML.BinaryEndPattern.length)
             val xml = new String(pxmlData)
             Full(XML.loadString(xml))
-          case None => error("The found PXML file in the PND does not have an end tag!") //TODO: translate!
+          case None => error(S.?("pxml.noendtag"))
         }
       case None => None
     }

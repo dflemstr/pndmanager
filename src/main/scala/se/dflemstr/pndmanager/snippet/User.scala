@@ -19,7 +19,7 @@ class User {
 
   /** Returns the name of the user, if it has one */
   def name: NodeSeq = Text(User.currentUser
-         .map(_.niceName) openOr "anonymous") //TODO: translate!
+         .map(_.niceName) openOr S.?("user.anonymous"))
 
   /** Emits a warning if the user has a "default" nickname */
   def checkIfNameUnchanged(html: NodeSeq): NodeSeq = {
@@ -41,6 +41,11 @@ class User {
 
   /** Logs the user out immediately, if included on a page */
   def logoutCommand = User.logout
+
+  def logoutButton(contents: NodeSeq) = SHtml.ajaxButton(contents, () => {
+    User.logout
+    S.redirectTo(S.referer openOr "/")
+  })
 
   /** Creates a profile edit form for the logged in user */
   def editForm(html: NodeSeq) = User.edit(html)

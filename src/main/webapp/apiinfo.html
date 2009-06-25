@@ -1,21 +1,5 @@
 <lift:surround with="default" at="content">
     <p>
-        The <lift:Application.name/> supports REST-communication, and thus can
-        be communicated with using that standard.
-    </p>
-    <p>
-        If you want to use the <lift:Application.name/> API, you just have to download
-        (meaning: send a HTTP GET request to) the 
-        <a href="/api/repository.xml"><lift:Application.name/> API repository file</a>
-        whenever you need information about the packages that the <lift:Application.name/>
-        manages. This file contains basic information about all the packages in the system.
-    </p>
-    <p>
-        If you need even more information about a package than what can be
-        acquired through the repository file, locate that package within the
-        repository file, and follow the link contained in the "&lt;details&gt;"
-        tag for that package entry. This link points to a file containing
-        detailed information about the package, including its complete and
-        untouched PXML file.
+        <lift:embed what="translations/apiinfo/restinfo"/>
     </p>
 </lift:surround>
