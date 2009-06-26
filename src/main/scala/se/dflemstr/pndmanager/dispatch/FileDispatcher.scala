@@ -1,6 +1,6 @@
 package se.dflemstr.pndmanager.dispatch
 
-import util.PXML
+import util.binary.PXML
 import model.Package
 import _root_.net.liftweb._
 import http._

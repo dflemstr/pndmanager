@@ -3,8 +3,8 @@ package se.dflemstr.pndmanager
 import _root_.org.specs._
 import _root_.org.specs.runner._
 import model._
-import util._
-import scala.xml._
+import util.binary._
+import _root_.scala.xml._
 
 class PNDPackageTest extends Runner(PNDPackage) with JUnit with Console
 

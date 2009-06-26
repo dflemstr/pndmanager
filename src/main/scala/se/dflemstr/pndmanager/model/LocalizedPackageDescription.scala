@@ -1,7 +1,7 @@
 package se.dflemstr.pndmanager.model
 
 import net.liftweb.mapper._
-import util.{LocalizedString, OwnerField}
+import util.model.{LocalizedString, OwnerField}
 
 /** The MetaMapper for localized package descriptions */
 object LocalizedPackageDescription extends LocalizedPackageDescription

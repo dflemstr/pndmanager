@@ -1,4 +1,4 @@
-package se.dflemstr.pndmanager.util
+package se.dflemstr.pndmanager.util.binary
 
 /** Data related to a PNG image */
 object PNG {

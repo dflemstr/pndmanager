@@ -22,6 +22,8 @@ import _root_.javax.imageio.ImageIO
 import _root_.java.io.ByteArrayOutputStream
 
 import _root_.se.dflemstr.pndmanager.util._
+import _root_.se.dflemstr.pndmanager.util.binary._
+import _root_.se.dflemstr.pndmanager.util.model._
 import _root_.se.dflemstr.pndmanager.model.entry._
 
 /** The MetaMapper for package objects */
@@ -67,6 +69,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
       (p.owner == (User.currentUser openOr 0l) || (User.currentUser.map(_.superUser.is) openOr false))
   } catch { case _ => false }
 
+  def notifyDispatcher(p: Package) = PackageNotificationDispatcher ! NewPackageNotification(p)
 
   override def listBindParams(redraw: () => JsCmd): List[BindParam] =
     ("searchbox" -> SHtml.ajaxText(FilterString, x => {FilterString(x); FirstItemIndex(0); redraw()})) ::
@@ -190,7 +193,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
 
         pnd.PNGdata match {
           case Full(image) => updateImages(p, image)
-          case Empty => S.warning("Your PND does not contain a screenshot; no screenshot will be shown!")
+          case Empty => S.warning(S.?("package.warning.noscreenshot"))
           case Failure(x, _, _) => S.warning(S.?("package.warning.invalidscreenshot") replace ("%error%", x))
         }
 
@@ -199,6 +202,8 @@ object Package extends Package with LongKeyedMetaMapper[Package]
         p.updatedOn(new Date())
         
         p.valid(true)
+
+        notifyDispatcher(p)
 
         Nil
       } catch {
@@ -209,7 +214,8 @@ object Package extends Package with LongKeyedMetaMapper[Package]
   }
 }
 
-class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package] with IdPK {
+class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package] 
+    with IdPK {
   import Package._
 
   def entries: List[Entry[Package]] =

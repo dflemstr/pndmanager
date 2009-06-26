@@ -1,4 +1,4 @@
-package se.dflemstr.pndmanager.util
+package se.dflemstr.pndmanager.util.model
 
 import java.util.Locale
 import net.liftweb.mapper._

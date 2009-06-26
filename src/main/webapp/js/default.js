@@ -26,6 +26,10 @@ $(document).ready(function() {
     }
 
     $(".menuitem a").hover(retractCurrentMenu, revealCurrentMenu);
+
+    $("new-packages").click(function() {
+        $(this).slideUp("fast")
+    });
 });
 
 

@@ -1,4 +1,4 @@
-package se.dflemstr.pndmanager.util
+package se.dflemstr.pndmanager.util.binary
 
 import scala.xml._
 import net.liftweb.http.{FieldError, FieldIdentifier,S}

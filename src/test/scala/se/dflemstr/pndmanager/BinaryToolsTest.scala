@@ -2,8 +2,8 @@ package se.dflemstr.pndmanager
 
 import _root_.org.specs._
 import _root_.org.specs.runner._
-import org.specs.util.DataTables
-import se.dflemstr.pndmanager.util.BinaryTools
+import _root_.org.specs.util.DataTables
+import _root_.se.dflemstr.pndmanager.util.binary.BinaryTools
 
 class BinaryToolsTest extends Runner(BinTools) with JUnit with Console
 

@@ -1,4 +1,4 @@
-package se.dflemstr.pndmanager.util
+package se.dflemstr.pndmanager.util.binary
 
 /**
  * Contains various tools that are useful when parsing binaries of various types
