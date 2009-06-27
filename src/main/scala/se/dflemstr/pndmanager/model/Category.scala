@@ -10,7 +10,7 @@ import util._
 import scala.xml._
 
 /** The MetaMapper for categories */
-object Category extends Category with LongKeyedMetaMapper[Category] {
+object Category extends Category with LongKeyedMetaMapper[Category] with LongCRUDify[Category] {
   override def dbTableName = "categories"
 }
 

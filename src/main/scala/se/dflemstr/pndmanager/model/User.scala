@@ -12,6 +12,9 @@ import Helpers._
 import net.liftweb.openid._
 import scala.xml._
 
+import _root_.org.openid4java.message.MessageExtension
+import _root_.org.openid4java.message.ax.{AxMessage, FetchResponse}
+import _root_.org.openid4java.message.sreg.{SRegMessage, SRegResponse}
 import _root_.org.openid4java.discovery.Identifier
 import _root_.org.openid4java.consumer._
 
@@ -21,16 +24,78 @@ object User extends User with MetaOpenIDProtoUser[User] {
 
   /** The base URL that is used for user management */
   override val basePath: List[String] = "user" :: Nil
-  def openIDVendor = SimpleOpenIdVendor
+  def openIDVendor = pndmanager.util.openid.Vendor
 
-  override def findOrCreate(openId: String): User =
+  def findOrCreate(openId: String, verResult: VerificationResult): User =
     find(By(this.openId, openId)) match {
       case Full(u) => u
       case _ =>
-        create.openId(openId).
-        nickname("change"+Helpers.randomInt(1000000000)).password(Helpers.randomString(15)).
-        email(Helpers.randomInt(100000000)+"unknown@unknown.com").
-        saveMe
+        val auth = verResult.getAuthResponse
+
+        def extractFields(extractor: (String) => String): (String, String, String, String) =
+          (extractor("email"), extractor("nickname"), extractor("language"), extractor("timezone"))
+
+        def getFields: PartialFunction[MessageExtension, (String, String, String, String)] = {
+          case f: FetchResponse => try {
+            extractFields(x => f.getAttributeValues(x).get(0).asInstanceOf[String])
+          } catch {case _ => (null, null, null, null)}
+          case f: SRegResponse => try {
+            extractFields(f.getAttributeValue(_))
+          } catch {case _ => (null, null, null, null)}
+          case _ => (null, null, null, null)
+        }
+
+        def wrapField(f: String) = if(f == null || f.length < 1) Empty else Full(f)
+
+        def correctLanguage(l: Box[String]) = l match {
+          case Full(l) => 
+            val low = l.toLowerCase.replace("-", "_")
+            val parts = low.split("_")
+            Full(parts(0) + (if(parts.length > 1) "_" + parts(1).toUpperCase else ""))
+          case _ => Empty
+        }
+          
+        val (n, e, l, t) =
+          if(auth.hasExtension(AxMessage.OPENID_NS_AX)) {
+            Log.info("The response had Attribute Extension information")
+            getFields(auth.getExtension(AxMessage.OPENID_NS_AX))
+          } else if (auth.hasExtension(SRegMessage.OPENID_NS_SREG)) {
+            Log.info("The response had SReg information")
+            getFields(auth.getExtension(SRegMessage.OPENID_NS_SREG))
+          } else (null, null, null, null)
+
+        val nickname = wrapField(n)
+        val email = wrapField(e)
+        val language = correctLanguage(wrapField(l))
+        val timezone = wrapField(t)
+
+        val nada = "Nothing"
+        Log.info("Creating user, with nick: '" + (nickname openOr nada) +
+                 "' email: '" + (email openOr nada) +
+                 "' lang: '" + (language openOr nada) +
+                 "' tzone: '" + (timezone openOr nada) + "'")
+
+        def randomNick = "change" + Helpers.randomInt(1000000000)
+        def randomEmail = Helpers.randomInt(100000000) + "unknown@unknown.com"
+
+        val newUser = create
+          .openId(openId)
+          .nickname(nickname openOr randomNick)
+          .password(Helpers.randomString(15))
+          .locale(language)
+          .timezone(timezone)
+          .email(email openOr randomEmail)
+          
+        if(newUser.validate == Nil)
+          newUser.saveMe
+        else {
+          newUser
+            .nickname(randomNick)
+            .email(randomEmail)
+            .locale(Empty)
+            .timezone(Empty)
+            .saveMe
+        }
   }
 
   //This is unused, since we use external templates
@@ -44,16 +109,20 @@ object User extends User with MetaOpenIDProtoUser[User] {
     }
     def performLogUserIn(openid: Box[Identifier], fo: Box[VerificationResult],
                          exp: Box[Exception]): LiftResponse = {
-      (openid, exp) match {
-        case (Full(id), _) =>
-          val user = this.findOrCreate(id.getIdentifier)
+      (openid, exp, fo) match {
+        case (Full(id), _, Full(f)) =>
+          val user = this.findOrCreate(id.getIdentifier, f)
           logUserIn(user)
           S.notice(S.?("user.login.succeded") replace ("%user%", user.niceName))
-        case (_, Full(exp)) =>
+        case (_, Full(exp), Full(_)) =>
           S.error(S.?("user.login.exception") replace ("%exception%", exp.getMessage))
-        case _ =>
-          S.error(S.?("user.login.failure") replace ("%reason%", fo.open_!.getStatusMsg))
+        case (_, _, Full(f)) =>
+          S.error(S.?("user.login.failure") replace ("%reason%", f.getStatusMsg))
+        case _ => assert(false, "The performLogUserIn method behaved in an invalid way.")
       }
+
+      val l = fo.open_!
+      l.getAuthResponse.getExtensions
       RedirectResponse(homePage)
     }
 
@@ -69,6 +138,8 @@ object User extends User with MetaOpenIDProtoUser[User] {
     def testEdit() {
       theUser.validate match {
         case Nil =>
+          if(Props.get("pndmanager.adminuname") == theUser.nickname.is)
+            theUser.superUser(true)
           theUser.save
           S.notice(S.??("profile.updated"))
           S.redirectTo(S.referer openOr "/")

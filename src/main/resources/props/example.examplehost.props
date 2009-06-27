@@ -1,3 +1,4 @@
 pndmanager.defaultcategories=Audio/Video:Audio:Video:Development:Education:Game:Graphics:Network:Office:Settings:System:Utility
+pndmanager.adminuname=administrator
 db.driver=com.mysql.jdbc.Driver
 db.url=jdbc:mysql://localhost/mydatabase?user=myuser&password=abcd1234

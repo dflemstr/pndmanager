@@ -265,7 +265,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     override def asHtml = <a href={downloadLoc.createLink(NullLocParams)} class="downloadlink">{downloadLoc.linkText openOr S.?("package.download")}</a>
 
     def asXML = <pndfile>{downloadLoc.createLink(NullLocParams) match {
-          case Some(x) => S.contextPath + x
+          case Some(x) => S.hostAndPath + x
           case _ => null
         }
       }</pndfile>
@@ -367,7 +367,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
         if(isEmpty)
           <em class="nothumbnail" style="text-align: center;">(No thumbnail)</em>
         else
-          <img src={"/thumbnail/" + urlFriendlyPrimaryKey(Package.this) + ".png"}/>
+          <img src={S.hostAndPath + "/thumbnail/" + urlFriendlyPrimaryKey(Package.this) + ".png"}/>
       }</div>
   }
 
@@ -380,10 +380,10 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
         if(isEmpty)
           <em class="noscreenshot">(No screenshot)</em>
         else
-          <img src={"/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="screenshot"/>
+          <img src={S.hostAndPath + "/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="screenshot"/>
 
      }</div>
-   def asXML = <screenshot>{S.contextPath + "/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"}</screenshot>
+   def asXML = <screenshot>{S.hostAndPath + "/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"}</screenshot>
   }
 
 }
