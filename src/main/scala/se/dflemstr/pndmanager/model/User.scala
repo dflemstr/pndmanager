@@ -230,3 +230,14 @@ class User extends OpenIDProtoUser[User] {
 
   override def niceNameWEmailLink = <xml:group/>
 }
+
+/** This object exists solely because the Lift guys fail to coordinate themselves ;) */
+object AdminUserEditor extends User with MetaOpenIDProtoUser[User] with LongCRUDify[User] {
+  //Resolving multiple inheritance issue
+  override lazy val editPath = Prefix ::: List(EditItem)
+  override def dbTableName = "users"
+
+  override def createMenuLoc = None
+
+  def openIDVendor = null
+}

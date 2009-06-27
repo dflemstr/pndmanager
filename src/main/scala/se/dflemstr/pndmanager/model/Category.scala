@@ -19,5 +19,7 @@ class Category extends LongKeyedMapper[Category] with IdPK {
   def getSingleton = Category
 
   /** The name of this category */
-  object name extends MappedString(this, 32)
+  object name extends MappedString(this, 32) {
+    override def displayHtml = Text("Name")
+  }
 }

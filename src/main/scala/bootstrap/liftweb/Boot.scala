@@ -80,8 +80,13 @@ class Boot {
                            Package.deleteMenu("Package.delete").open_!,
                            Package.viewMenu("Package.view").open_!)
 
+    val categoryAdminMenu = Menu(Loc("category", List("categories", "index"), "[admin] Categories", adminAuthorization),
+                            Category.menus: _*)
+    val userAdminMenu = Menu(Loc("useradmin", List("users", "index"), "[admin] Users", adminAuthorization),
+                            AdminUserEditor.menus: _*)
+
     val entries = Menu(Loc("home", List("index"), S.?("menu.home"))) ::
-                  packageMenu :: userMenu ::
+                  packageMenu :: userMenu :: categoryAdminMenu :: userAdminMenu ::
                   Menu(Loc("apiinfo", List("apiinfo"), S.?("menu.apiinfo"))) :: Nil
 
     LiftRules.setSiteMap(SiteMap(entries:_*))
@@ -111,6 +116,8 @@ class Boot {
     //Make the XML API URLs usable
     LiftRules.dispatch.append(Package.dispatch)
   }
+
+  private def adminAuthorization = If(() => (User.currentUser.map(_.superUser.is) openOr false), () => RedirectResponse(S.referer openOr "/"))
 
   private def makeUtf8(req: HttpServletRequest) {
     req.setCharacterEncoding("UTF-8")

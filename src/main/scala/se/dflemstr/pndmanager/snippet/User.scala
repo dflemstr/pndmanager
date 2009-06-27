@@ -40,7 +40,7 @@ class User {
   def loginForm(html: NodeSeq) = User.login(html)
 
   /** Logs the user out immediately, if included on a page */
-  def logoutCommand = User.logout
+  def logoutCommand = {User.logout; S.redirectTo("/")}
 
   def logoutButton(contents: NodeSeq) = SHtml.ajaxButton(contents, () => {
     User.logout

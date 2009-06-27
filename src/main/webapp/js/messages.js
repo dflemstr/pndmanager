@@ -3,9 +3,9 @@
  */
 
 $(document).ready(function() {
-    $(".note, .error, .warning").slideDown("slow");
+    $(".success, .error, .notice").slideDown("slow");
 
-    $(".note, .error, .warning").click(function() {
+    $(".success, .error, .notice").click(function() {
         $(this).slideUp("slow");
     });
 });
