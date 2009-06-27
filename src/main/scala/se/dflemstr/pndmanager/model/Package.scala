@@ -54,17 +54,23 @@ object Package extends Package with LongKeyedMetaMapper[Package]
   override lazy val digestAccessNode = "repository"
   override lazy val elementAccessNode = "package"
   override def createTag(in: NodeSeq): Elem = <pndmanager-api>{in}</pndmanager-api>
-  override def createItem(in: NodeSeq): Elem = <package>{in}</package>
+  override def createItem(in: NodeSeq, detailsLink: Boolean, item: Package): Elem = <package>{
+    in ++ (
+      if(detailsLink)
+        <details>{S.hostAndPath + "/api/" + elementAccessNode + "/" + urlFriendlyPrimaryKey(item) + ".xml"}</details>
+      else
+        Nil
+      )
+  }</package>
 
   /** Contains the "search string" provided by the user */
   object FilterString extends SessionVar[String]("")
 
   object FilterCategory extends SessionVar[Option[Category]](None)
 
-  def filterCategoryAlternatives = {
+  def filterCategoryAlternatives = 
     ("0", S.?("package.categorylist.nofilter")) ::
     Category.findAll.map(x => (x.id.toString, x.name.toString)).toList
-  }
 
   override def createAuthorization = User.loggedIn_?
 

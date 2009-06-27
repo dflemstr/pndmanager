@@ -103,7 +103,7 @@ class Boot {
     LiftRules.dispatch.append(SimpleOpenIdVendor.dispatchPF)
 
     //Init Flot
-    net.liftweb.widgets.flot.Flot.init()
+    CustomFlot.init()
   }
 
   def setHooks() = {

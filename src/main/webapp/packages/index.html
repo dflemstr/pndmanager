@@ -1,6 +1,10 @@
 <lift:surround with="default" at="content">
     <p>
-        <lift:loc>package.index.packagenumber</lift:loc>
-        <lift:Packages.count/>
+        <lift:loc>package.index.packagenumber</lift:loc><lift:Packages.count/>
+    </p>
+    <p>
+        <lift:Packages.categoryDiagram>
+            <diagram:graph/>
+        </lift:Packages.categoryDiagram>
     </p>
 </lift:surround>
