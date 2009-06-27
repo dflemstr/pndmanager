@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>se.dflemstr</groupId>
   <artifactId>pndmanager</artifactId>
-  <version>1.0-alpha-SNAPSHOT</version>
+  <version>1.0-beta-SNAPSHOT</version>
   <packaging>war</packaging>
   <name>PND Package Manager</name>
   <inceptionYear>2009</inceptionYear>
