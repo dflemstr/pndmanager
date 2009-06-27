@@ -1,4 +1,5 @@
 pndmanager.defaultcategories=Audio/Video:Audio:Video:Development:Education:Game:Graphics:Network:Office:Settings:System:Utility
 pndmanager.adminuname=admin
+pndmanager.spamtimeout=600000
 db.driver=org.h2.Driver
 db.url=jdbc:h2:mem:pndmanager;DB_CLOSE_DELAY=-1

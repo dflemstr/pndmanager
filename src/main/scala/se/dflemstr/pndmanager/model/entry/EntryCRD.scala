@@ -25,6 +25,10 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
   def baseName: String = "item"
 
   override def dbTableName = baseName + "s"
+
+  def spamProtection = false
+  def spamProtectionTimeout = 600000 // 5 minutes
+  def spamTimeMessage = "Wait another %time% seconds."
   
   def createMenuName = S.?("entry.create") replace ("%basename%", baseName)
   def viewMenuName = S.?("entry.view") replace ("%basename%", baseName)
@@ -35,7 +39,6 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
   def viewPath = List(baseName + "s", "view")
   def listPath = List(baseName + "s", "list")
   def deletePath = List(baseName + "s", "delete")
-
 
   def createAction = "create"
   def listAction = "list"
@@ -101,6 +104,8 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
 
   /** Decides whether we should show RichSummary entries or not */
   object RichDisplay extends SessionVar[Boolean](false)
+
+  object LastCreate extends SessionVar[Long](0l)
 
   /** Contains all the "sortings" (sort directions) for sortable entries */
   object Sortings extends SessionVar[mutable.Map[Sortable[_, MapperType], Option[AscOrDesc]]] (mutable.Map(
@@ -169,46 +174,53 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
 
   /** Creates a form for editing a MapperType */
   private def createMapper(template: NodeSeq) = {
-    val thisSnippet = S.currentSnippet
-    val mapper = EntryCRD.this.create
+    val now = System.currentTimeMillis
+    val nextUpload = LastCreate.is + spamProtectionTimeout
+    if(spamProtection && now < nextUpload) {
+      <p>{spamTimeMessage replace ("%time%", ((nextUpload - now) / 1000).toString)}</p>
+    } else {
+      val thisSnippet = S.currentSnippet
+      val mapper = EntryCRD.this.create
 
-    /** Closure for creating the form */
-    def makePage(html: NodeSeq): NodeSeq = {
-      val backdoor = origin
-      
-      /** Make a form list of all the entries */
-      def doEntries(temp: NodeSeq): NodeSeq = (
-        for {
-          entry <- entries
-          if(entry match {
-              case x: Editable[_] => true
-              case _ => false
-            })
+      /** Closure for creating the form */
+      def makePage(html: NodeSeq): NodeSeq = {
+        val backdoor = origin
 
-          instanceField = getActualBaseField(mapper, entry.asInstanceOf[Editable[MapperType]])
-        } yield bind("entry", temp,
-                     "name" -> instanceField.displayHtml,
-                     "input" -> instanceField.toForm)
-      ).flatMap(x => x) //I like one-liners...
+        /** Make a form list of all the entries */
+        def doEntries(temp: NodeSeq): NodeSeq = (
+          for {
+            entry <- entries
+            if(entry match {
+                case x: Editable[_] => true
+                case _ => false
+              })
 
-      /** The submit callback */
-      def onSubmit() = creationProcess(mapper) match {
-        case Nil =>
-          mapper.save
-          S.notice(createSuccededMsg)
-          S.redirectTo(backdoor)
-        case error =>
-          S.error(error)
-          thisSnippet.foreach(S.mapSnippet(_, makePage))
+            instanceField = getActualBaseField(mapper, entry.asInstanceOf[Editable[MapperType]])
+          } yield bind("entry", temp,
+                       "name" -> instanceField.displayHtml,
+                       "input" -> instanceField.toForm)
+        ).flatMap(x => x) //I like one-liners...
+
+        /** The submit callback */
+        def onSubmit() = creationProcess(mapper) match {
+          case Nil =>
+            mapper.save
+            S.notice(createSuccededMsg)
+            LastCreate(now)
+            S.redirectTo(backdoor)
+          case error =>
+            S.error(error)
+            thisSnippet.foreach(S.mapSnippet(_, makePage))
+        }
+
+        bind(createAction, html,
+             "entry" -> doEntries _ ::
+             "submit"-> ((_: NodeSeq) => SHtml.submit(createSubmitButton, onSubmit _)) ::
+             createBindParams: _*)
       }
 
-      bind(createAction, html,
-           "entry" -> doEntries _ ::
-           "submit"-> ((_: NodeSeq) => SHtml.submit(createSubmitButton, onSubmit _)) ::
-           createBindParams: _*)
+      makePage(template)
     }
-
-    makePage(template)
   }
 
   def createMenu(snippetName: String): Box[Menu] = createMenu(createPath, snippetName)

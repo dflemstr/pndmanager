@@ -33,6 +33,10 @@ object Package extends Package with LongKeyedMetaMapper[Package]
 
   override val baseName = "package"
 
+  override def spamProtection = true
+  override def spamProtectionTimeout = Props.get("pndmanager.spamtimeout").map(_.toInt) openOr 600000
+  override def spamTimeMessage = S.?("package.create.waittime")
+
   override def createMenuName = S.?("package.create")
   override def viewMenuName = S.?("package.view")
   override def listMenuName = S.?("package.list")

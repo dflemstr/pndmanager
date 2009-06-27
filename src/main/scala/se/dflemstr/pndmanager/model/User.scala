@@ -4,6 +4,7 @@ import scala.xml.Text
 import net.liftweb._
 import mapper._
 import http._
+import js._
 import sitemap.{Loc,Menu}
 import Loc._
 import SHtml._
@@ -55,7 +56,7 @@ object User extends User with MetaOpenIDProtoUser[User] {
           case _ => Empty
         }
           
-        val (n, e, l, t) =
+        val (e, n, l, t) =
           if(auth.hasExtension(AxMessage.OPENID_NS_AX)) {
             Log.info("The response had Attribute Extension information")
             getFields(auth.getExtension(AxMessage.OPENID_NS_AX))
@@ -118,11 +119,8 @@ object User extends User with MetaOpenIDProtoUser[User] {
           S.error(S.?("user.login.exception") replace ("%exception%", exp.getMessage))
         case (_, _, Full(f)) =>
           S.error(S.?("user.login.failure") replace ("%reason%", f.getStatusMsg))
-        case _ => assert(false, "The performLogUserIn method behaved in an invalid way.")
+        case _ => S.error(S.?("user.login.notfound"))
       }
-
-      val l = fo.open_!
-      l.getAuthResponse.getExtensions
       RedirectResponse(homePage)
     }
 
@@ -214,6 +212,35 @@ object User extends User with MetaOpenIDProtoUser[User] {
   //don't want to ruin the staircase effect, leaving space here ;)
 
   override def validateUserMenuLoc: Box[Menu] = Empty
+
+  def adminListMenu: Box[Menu] = Full(Menu(Loc("useradmin.list", List("useradmin", "list"), "Manage Users", Snippet("UserAdmin.list", makeAdminList _))))
+
+  def makeAdminList(template: NodeSeq): NodeSeq = {
+    def makeSU(u: User): NodeSeq = {
+      val updateID = "su-" + u.id.is
+      <div id={updateID}>{
+        if(u.nickname.is != (Props.get("pndmanager.adminuname") openOr "")) {
+          SHtml.ajaxCheckbox(u.superUser.is, x => {
+            u.superUser(x).save
+            JsCmds.SetHtml(updateID, makeSU(u))
+          })
+        }
+        else
+          Text(":-P")
+      }</div>
+    }
+
+    if(!(User.currentUser.map(_.superUser.is) openOr false))
+      Text("You're not allowed to see this!")
+    else {
+      User.findAll.map(u => 
+        bind("user", template,
+             "name" -> Text(u.niceName),
+             "superuser" -> makeSU(u),
+             "delete" -> SHtml.a(() => {u.delete_!; JsCmds.Noop}, Text("Delete")))
+      ).flatMap(x => x)
+    }
+  }
 }
 
 class User extends OpenIDProtoUser[User] {
@@ -229,15 +256,4 @@ class User extends OpenIDProtoUser[User] {
   }
 
   override def niceNameWEmailLink = <xml:group/>
-}
-
-/** This object exists solely because the Lift guys fail to coordinate themselves ;) */
-object AdminUserEditor extends User with MetaOpenIDProtoUser[User] with LongCRUDify[User] {
-  //Resolving multiple inheritance issue
-  override lazy val editPath = Prefix ::: List(EditItem)
-  override def dbTableName = "users"
-
-  override def createMenuLoc = None
-
-  def openIDVendor = null
 }

@@ -1,0 +1,17 @@
+<lift:surround with="default" at="content">
+    <p>
+        These are the user administration pages. Any changes are instantaneous,
+        so be careful with what you do here!
+    </p>
+    <p>
+        <em>Note:</em> the deletion of an user can be very unpleasant for that user.
+        It will not be logged out the normal way, but be instantly deleted, so
+        it might see stack traces or similar when leaving the page.
+    </p>
+    <table>
+        <tr><th>Name</th><th>Superuser?</th><th> </th></tr>
+        <lift:UserAdmin.list>
+            <tr><td><user:name/></td><td><user:superuser/></td><td><user:delete/></td></tr>
+        </lift:UserAdmin.list>
+    </table>
+</lift:surround>

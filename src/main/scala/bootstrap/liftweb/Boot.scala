@@ -80,10 +80,10 @@ class Boot {
                            Package.deleteMenu("Package.delete").open_!,
                            Package.viewMenu("Package.view").open_!)
 
-    val categoryAdminMenu = Menu(Loc("category", List("categories", "index"), "[admin] Categories", adminAuthorization),
-                            Category.menus: _*)
-    val userAdminMenu = Menu(Loc("useradmin", List("users", "index"), "[admin] Users", adminAuthorization),
-                            AdminUserEditor.menus: _*)
+    val categoryAdminMenu = Menu(Loc("category", List("categories", "index"), "[admin] Category administration", adminAuthorization),
+                                 Category.menus: _*)
+    val userAdminMenu = Menu(Loc("useradmin", List("useradmin", "index"), "[admin] User administration", adminAuthorization),
+                             User.adminListMenu.open_!)
 
     val entries = Menu(Loc("home", List("index"), S.?("menu.home"))) ::
                   packageMenu :: userMenu :: categoryAdminMenu :: userAdminMenu ::
