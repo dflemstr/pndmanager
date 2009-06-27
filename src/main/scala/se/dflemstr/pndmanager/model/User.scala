@@ -219,14 +219,18 @@ object User extends User with MetaOpenIDProtoUser[User] {
     def makeSU(u: User): NodeSeq = {
       val updateID = "su-" + u.id.is
       <div id={updateID}>{
-        if(u.nickname.is != (Props.get("pndmanager.adminuname") openOr "")) {
-          SHtml.ajaxCheckbox(u.superUser.is, x => {
-            u.superUser(x).save
-            JsCmds.SetHtml(updateID, makeSU(u))
-          })
+        if(!(User.currentUser.map(_.superUser.is) openOr false))
+          Text("You're not allowed to see this!")
+        else {
+          if(u.nickname.is != (Props.get("pndmanager.adminuname") openOr "")) {
+            SHtml.ajaxCheckbox(u.superUser.is, x => {
+              u.superUser(x).save
+              JsCmds.SetHtml(updateID, makeSU(u))
+            })
+          }
+          else
+            Text(":-P")
         }
-        else
-          Text(":-P")
       }</div>
     }
 

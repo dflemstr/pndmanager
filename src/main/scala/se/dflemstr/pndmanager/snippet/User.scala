@@ -40,11 +40,14 @@ class User {
   def loginForm(html: NodeSeq) = User.login(html)
 
   /** Logs the user out immediately, if included on a page */
-  def logoutCommand = {User.logout; S.redirectTo("/")}
+  def logoutCommand = {
+    User.logout
+    S.redirectTo("/")
+  }
 
   def logoutButton(contents: NodeSeq) = SHtml.ajaxButton(contents, () => {
-    User.logout
-    S.redirectTo(S.referer openOr "/")
+    User.logoutCurrentUser
+    js.JsCmds.RedirectTo("/")
   })
 
   /** Creates a profile edit form for the logged in user */
