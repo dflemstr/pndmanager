@@ -31,7 +31,7 @@ class Packages {
         val x = counts(e)
         count += 1
         new FlotSerie {
-          override val data = List((count.toDouble, Helpers.randomInt(1000).toDouble))//x.toDouble))
+          override val data = List((count.toDouble, x.toDouble))
           override val label = Full(e)
           override val bars = Full(new FlotBarsOptions {
             override val show = Full(true)
