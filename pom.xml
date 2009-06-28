@@ -114,7 +114,7 @@
           <args>
             <arg>-deprecation</arg>
             <arg>-unchecked</arg>
-            <!--<arg>-optimise</arg>-->
+            <arg>-optimise</arg>
           </args>
         </configuration>
       </plugin>
@@ -126,7 +126,7 @@
           <scanIntervalSeconds>5</scanIntervalSeconds>
         </configuration>
       </plugin>
-<!-- still broken...
+<!-- Broken now, too
       <plugin>
         <groupId>net.sf.alchim</groupId>
         <artifactId>yuicompressor-maven-plugin</artifactId>
@@ -139,9 +139,27 @@
         </executions>
         <configuration>
           <nosuffix>true</nosuffix>
+          <nomunge>true</nomunge>
         </configuration>
       </plugin>
 -->
+      <plugin>
+        <groupId>com.mobilvox.ossi.mojo</groupId>
+        <artifactId>maven-js-plugin</artifactId>
+        <version>1.3.1</version>
+        <configuration>
+          <mergeWarFiles>true</mergeWarFiles>
+          <classifier>js-compressed</classifier>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>compress</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-eclipse-plugin</artifactId>

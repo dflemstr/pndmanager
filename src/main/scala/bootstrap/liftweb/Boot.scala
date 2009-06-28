@@ -51,7 +51,6 @@ class Boot {
 
   private def createData() = {
     //This is a hack to get categories, and might destroy category mappings on production systems
-    //TODO: make a persistent category management system
     if(Category.count == 0) {
       Props.get("pndmanager.defaultcategories", "").split(":").filter(_ matches """[\w/._\- ]+""").foreach(Category.create.name(_).save)
       Log.info("Created some categories, count: " + Category.count) //don't translate

@@ -6,7 +6,7 @@
  * Returns true if the page was switched and not refreshed the last page load
  */
 function pageSwitched() {
-    return !(document.referrer.toString() === window.location.toString())
+    return !(document.referrer.toString() === window.location.toString());
 }
 
 /*
@@ -14,59 +14,59 @@ function pageSwitched() {
  */
 function traversedUp() {
     var r = document.referrer.toString(), l = window.location.toString();
-    return (r.length > l.length && r.indexOf(l) == 0);
+    return (r.length > l.length && r.indexOf(l) === 0);
 }
 
-$(document).ready(function() {
-    if(pageSwitched())
-    {
-        $(".selectedmenu ul").hide();
-        $(".selectedmenu span").css("padding-left", "5px");
-        revealCurrentMenu();
-    }
-
-    $(".menuitem a").hover(retractCurrentMenu, revealCurrentMenu);
-
-    $("new-packages").click(function() {
-        $(this).slideUp("fast")
-    });
-});
-
-
 function revealCurrentMenu() {
-    $(".selectedmenu span")
+    jQuery(".selectedmenu span")
         .stop()
         .animate({
             paddingLeft: "15px"
         }, "fast", function() {
-                $(this).addClass("witharrow");
+                jQuery(this).addClass("witharrow");
             });
 
-    if(!traversedUp())
-        $(".selectedmenu ul")
+    if(!traversedUp()) {
+        jQuery(".selectedmenu ul")
             .slideDown("fast");
-    else
-        $(".selectedmenu ul").show();
+    }
+    else {
+        jQuery(".selectedmenu ul").show();
+    }
 }
 
 function retractCurrentMenu() {
-    $(".selectedmenu span")
+    jQuery(".selectedmenu span")
         .stop()
         .animate({
             paddingLeft: "5px"
         }, "fast").removeClass("witharrow");
 }
 
+jQuery(document).ready(function() {
+    if(pageSwitched()) {
+        jQuery(".selectedmenu ul").hide();
+        jQuery(".selectedmenu span").css("padding-left", "5px");
+        revealCurrentMenu();
+    }
+
+    jQuery(".menuitem a").hover(retractCurrentMenu, revealCurrentMenu);
+
+    jQuery("new-packages").click(function() {
+        jQuery(this).slideUp("fast");
+    });
+});
+
 /*
  * Gets called by the Lift framework when AJAX happens
  */
 function showAjax() {
-    $("#ajax-loader").fadeIn("normal");
+    jQuery("#ajax-loader").fadeIn("normal");
 }
 
 /*
  * Gets called by the Lift framework when AJAX doesn't happen
  */
 function hideAjax() {
-    $("#ajax-loader").fadeOut("normal");
+    jQuery("#ajax-loader").fadeOut("normal");
 }
