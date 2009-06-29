@@ -60,7 +60,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
         <details>{S.hostAndPath + "/api/" + elementAccessNode + "/" + urlFriendlyPrimaryKey(item) + ".xml"}</details>
       else
         Nil
-      )
+    )
   }</package>
 
   /** Contains the "search string" provided by the user */
@@ -119,6 +119,8 @@ object Package extends Package with LongKeyedMetaMapper[Package]
     val badLocalized = strings.find(_.locale.is contains country)
     val american = strings.find(_.locale.is == "en_US")
     val english = strings.find(_.locale.is contains "en")
+
+    Log.info(List(localized, badLocalized, american, english))
 
     val best = List(localized, badLocalized, american, english)
       .find(_ match {case Some(_) => true; case None => false})
@@ -239,12 +241,14 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
   object owner extends MappedLongForeignKey(this, User)
       with ShowInRichSummary[Package] with Sortable[Long, Package] with APIExposed[Package] {
+    val id = "owner"
     override def displayName = S.?("package.owner")
     override def asHtml = Text(User.findByKey(is).map(_.niceName) openOr S.?("package.owner.unknown"))
     def asXML = <owner>{asHtml.text}</owner>
   }
 
   object updatedOn extends MappedDateTime(this) with ShowInRichSummary[Package] with Sortable[Date, Package] with APIExposed[Package] {
+    val id = "updated"
     override def displayName = S.?("package.updated")
     override def validations = super.validations ::: List(notInFuture(this) _)
     override def asHtml = dateAsHtml(is)
@@ -253,6 +257,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
   object pndFile extends MappedBinary(this) with Editable[Package]
       with ShowInDigest[Package] with APIExposed[Package] {
+    val id = "pnd"
     override def displayName = S.?("package.pndfile")
     override def validations = notZeroSize _ :: containsPXML _ :: super.validations
 
@@ -283,6 +288,8 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
   object name extends MappedPoliteString(this, 64) with ShowInDigest[Package]
       with Sortable[String, Package] with APIExposed[Package] {
+    val id = "name"
+
     override def displayName = S.?("package.name")
 
     override def dbIndexed_? = true
@@ -292,6 +299,8 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
   object category extends MappedLongForeignKey(this, Category) with ShowInSummary[Package]
       with Sortable[Long, Package] with Editable[Package] with APIExposed[Package] {
+    val id = "category"
+
     override def displayName = S.?("package.category")
     def unknown = S.?("package.category.unknown")
 
@@ -304,6 +313,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
   object version extends MappedString(this, 32) with ShowInDigest[Package]
       with Sortable[String, Package] with APIExposed[Package] {
+    val id = "version"
     //The actual value of this is a 16 char hex string, so
     //that it becomes easy to sort versions since it can be done alphabetically
     // (And I didn't want to create a custom MappedField just for this)
@@ -343,7 +353,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   object valid extends MappedBoolean(this)
 
   object description extends ShowInDetail[Package] {
-    
+    val id = "description"
     def displayHtml = Text(S.?("package.description"))
 
     def asHtml = {
@@ -354,6 +364,8 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   }
 
   object title extends ShowInRichSummary[Package] {
+    val id = "title"
+
     def displayHtml = Text(S.?("package.title"))
 
     def asHtml = {
@@ -364,6 +376,8 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   }
 
   object thumbnail extends MappedBinary(this) with Visible[Package] {
+    val id = "thumbnail"
+
     override def displayHtml = Text(S.?("package.thumbnail"))
 
     def isVisibleIn(app: Appearance.Value) = app match {
@@ -382,18 +396,19 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   }
 
   object screenshot extends MappedBinary(this) with ShowInDetail[Package] with APIExposed[Package] {
+    val id = "screenshot"
+
     override def displayHtml = Text(S.?("package.screenshot"))
 
     def isEmpty = is == null || is.length == 0
 
     override def asHtml = <div class="screenshot" style="width: 200px; height: 150px;"> {
-        if(isEmpty)
-          <em class="noscreenshot">(No screenshot)</em>
-        else
-          <img src={S.hostAndPath + "/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="screenshot"/>
-
-     }</div>
-   def asXML = <screenshot>{S.hostAndPath + "/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"}</screenshot>
+      if(isEmpty)
+        <em class="noscreenshot">(No screenshot)</em>
+      else
+        <img src={S.hostAndPath + "/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="screenshot"/>
+    }</div>
+    def asXML = <screenshot>{S.hostAndPath + "/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"}</screenshot>
   }
 
 }

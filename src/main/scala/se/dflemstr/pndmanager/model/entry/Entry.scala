@@ -11,6 +11,7 @@ trait Editable[T <: Mapper[T]] extends BaseOwnedMappedField[T] with Entry[T] wit
 
 /** Marks an entry that appears in various appearances (read-only) */
 trait Visible[T <: Mapper[T]] extends Entry[T] {
+  val id: String
   def asHtml: NodeSeq
   def displayHtml: NodeSeq
   def isVisibleIn(app: Appearance.Value): Boolean

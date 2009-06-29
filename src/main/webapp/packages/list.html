@@ -1,6 +1,9 @@
 <lift:surround with="default" at="content">
     <head>
         <link href="/css/item-display.css" rel="stylesheet" type="text/css" media="screen, print, projection"/>
+        <script src="/js/item-display.js" type="text/javascript"/>
+        <script src="/js/jquery.bgpos.js" type="text/javascript"/>
+        <script src="/js/jquery.color.js" type="text/javascript"/>
     </head>
     <lift:Package.list list_container_id="packagelist">
         <div id="packagelist">
@@ -45,26 +48,74 @@
             </list:ordinary>
             <list:rich>
                 <div class="rich-list">
-                    <div class="rich-headers">
-                        <list:header>
-                            <div header:class=""><header:name/></div>
-                        </list:header>
-                    </div>
-                    <div class="rich-rows">
+                    <table>
+                        <tr>
+                            <list:header_thumbnail>
+                                <th header:class="" id="thumbnail-header"><div><header:name/></div></th>
+                            </list:header_thumbnail>
+                            <th>
+                                <list:header_title>
+                                    <div header:class=""><header:name/></div>
+                                </list:header_title>
+                                <list:header_name>
+                                    <div header:class=""><header:name/></div>
+                                </list:header_name>
+                            </th>
+                            <th>
+                                <list:header_category>
+                                    <div header:class=""><header:name/></div>
+                                </list:header_category>
+                                <list:header_version>
+                                    <div header:class=""><header:name/></div>
+                                </list:header_version>
+                            </th>
+                            <th>
+                                <list:header_pnd>
+                                    <div header:class=""><header:name/></div>
+                                </list:header_pnd>
+                            </th>
+                            <th> </th>
+                            <th> </th>
+                        </tr>
                         <list:row>
-                            <div row:class="">
-                                <row:entry>
-                                    <div entry:class=""><entry:value/></div>
-                                </row:entry>
-                                <row:view>
-                                    <div class="details"><lift:loc>package.list.details</lift:loc></div>
-                                </row:view>
-                                <row:delete>
-                                    <div class="delete"><lift:loc>package.list.delete</lift:loc></div>
-                                </row:delete>
-                            </div>
+                            <tr row:class="">
+                                <row:entry_thumbnail>
+                                    <td entry:class="">
+                                        <div><entry:value/></div>
+                                    </td>
+                                </row:entry_thumbnail>
+                                <td colspan="2">
+                                    <row:entry_title>
+                                        <div>
+                                            <div class="title-entry"><entry:value/></div>
+                                        </div>
+                                    </row:entry_title>
+                                    <div class="alt name-entry">
+                                        <row:entry_name>
+                                            (<entry:value/>
+                                        </row:entry_name>
+                                        <row:entry_version>
+                                            - <entry:value/>)
+                                        </row:entry_version>
+                                    </div>
+                                    <row:entry_category>
+                                        <div class="quiet"><entry:value/></div>
+                                    </row:entry_category>
+                                </td>
+                                <td>
+                                    <row:entry_pnd>
+                                        <div><entry:value/></div>
+                                    </row:entry_pnd>
+                                </td>
+                                <td class="buttoncontainer">
+                                    <row:view><img src="../images/details.png" alt="Details"/></row:view>
+                                </td>
+                                <td class="buttoncontainer">
+                                    <row:delete><img src="../images/delete.png" alt="Delete"/></row:delete>
+                                </td>
+                            </tr>
                         </list:row>
-                    </div>
+                    </table>
                 </div>
             </list:rich>
             <div class="pagenavigator">

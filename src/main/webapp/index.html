@@ -16,4 +16,21 @@
     <p>
         <lift:embed what="translations/index/managerinfo"/>
     </p>
+    <p>
+        <lift:loc>package.digest.label</lift:loc>
+    </p>
+    <table>
+        <tr>
+            <th>Name</th><th>Title</th><th>Updated</th><th>Version</th><th>PND</th>
+        </tr>
+    <lift:Packages.digest>
+        <tr>
+            <td><digest:name/></td>
+            <td><digest:title/></td>
+            <td><digest:updated/></td>
+            <td><digest:version/></td>
+            <td><digest:pnd/></td>
+        </tr>
+    </lift:Packages.digest>
+    </table>
 </lift:surround>

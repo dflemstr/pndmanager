@@ -14,6 +14,16 @@ class Packages {
   /** A snippet that inserts the package count where it's used */
   def count: NodeSeq = Text(Package.count.toString)
 
+  def digest(template: NodeSeq): NodeSeq = {
+    Package.findAll(StartAt(0), MaxRows(10), OrderBy(Package.updatedOn, Ascending))
+      .flatMap(x => bind("digest", template,
+                         "name" -> x.name.asHtml,
+                         "title" -> x.title.asHtml,
+                         "uploaded" -> x.updatedOn.asHtml,
+                         "version" -> x.version.asHtml,
+                         "pnd" -> x.pndFile.asHtml))
+  }
+
   def categoryDiagram(template: NodeSeq): NodeSeq = {
     val id = Helpers.randomInt(1000)
 

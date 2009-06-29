@@ -137,16 +137,21 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
     FuncAttrBindParam("class", _ => countClass(name, count), "class")
 
   private def getVisibleEntries(m: MapperType, appearance: Appearance.Value): List[Visible[MapperType]] =
-    m.entries.map(x => {
+    m.entries.flatMap(x => {
       x match {
         case v: Visible[_] if(v.isVisibleIn(appearance)) => List(v.asInstanceOf[Visible[MapperType]])
         case _ => Nil
       }
-    }).flatMap(x => x)
+    })
 
-  private def doEntries(e: List[Entry[MapperType]], appearance: Appearance.Value)(in: NodeSeq): NodeSeq = {
-    var entryCount = 0
-    e.map(x => {
+  private def doEntries(e: List[Entry[MapperType]], a: Appearance.Value)
+      (in: NodeSeq): NodeSeq =
+    doEntries(e, a, 0)(in)
+
+  private def doEntries(e: List[Entry[MapperType]], appearance: Appearance.Value, startNr: Int)
+      (in: NodeSeq): NodeSeq = {
+    var entryCount = startNr
+    e.flatMap(x => {
       x match {
         case v: Visible[_] =>
           if(v.isVisibleIn(appearance)) {
@@ -160,7 +165,7 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
             Nil
         case _ => Nil
       }
-    }).flatMap(x => x)
+    })
   }
 
   private def createRewrite(name: String, path: List[String]):
@@ -270,55 +275,71 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
         else
           SHtml.a(() => {FirstItemIndex(FirstItemIndex.toInt + DisplayItemsPerPage.toInt); redraw()}, in)
 
+      def doHeaderLabel(v: Visible[MapperType]) = v match {
+        case s: Sortable[_, _] => SHtml.a(() => {
+          val x = s.asInstanceOf[Sortable[_ ,MapperType]]
+          Sortings(x) match {
+            case None => Sortings(x) = Some(Descending)
+            case Some(Descending) => Sortings(x) = Some(Ascending)
+            case Some(Ascending) => Sortings(x) = None
+            case s => Log.info("A list sorting problem has occured! Involved value: " + s) //don't translate
+          }; redraw()}, s.displayHtml)
+        case _ => v.displayHtml
+      }
+
+      def doHeaderClass(v: Visible[MapperType], headerNr: Int) =
+      FuncAttrBindParam("class", _ => Text((v match {
+        case s: Sortable[_, _] =>
+          val x = s.asInstanceOf[Sortable[_, MapperType]]
+          Sortings(x) match {
+            case Some(Ascending) => "sortable ascending "
+            case Some(Descending) => "sortable descending "
+            case None => "sortable unsorted "
+          }
+        case _ => ""
+      }) + countClass("header", headerNr)), "class")
+
       /** Creates headers for the list */
-      def doHeaders(appearance: Appearance.Value)(in: NodeSeq): NodeSeq = {
+      def doHeaders(entries: List[Visible[MapperType]], appearance: Appearance.Value)
+          (in: NodeSeq): NodeSeq = {
         var headerCount = 0
-        getVisibleEntries(EntryCRD.this, appearance).flatMap(f => {
+        entries.flatMap(f => {
           headerCount += 1
           bind("header", in,
             //The header label
-            "name" -> (f match {
-              case s: Sortable[_, _] => SHtml.a(() => {
-                val x = s.asInstanceOf[Sortable[_ ,MapperType]]
-                Sortings(x) match {
-                  case None => Sortings(x) = Some(Descending)
-                  case Some(Descending) => Sortings(x) = Some(Ascending)
-                  case Some(Ascending) => Sortings(x) = None
-                  case s => Log.info("A list sorting problem has occured! Involved value: " + s) //don't translate
-                }; redraw()}, s.displayHtml)
-              case _ => f.displayHtml
-            }),
+            "name" -> doHeaderLabel(f),
             //The header class
-            FuncAttrBindParam("class", _ => Text((f match {
-              case s: Sortable[_, _] =>
-                val x = s.asInstanceOf[Sortable[_, MapperType]]
-                Sortings(x) match {
-                  case Some(Ascending) => "sortable ascending "
-                  case Some(Descending) => "sortable descending "
-                  case None => "sortable unsorted "
-                }
-              case _ => ""
-            }) + countClass("header", headerCount)), "class")
+            doHeaderClass(f, headerCount)
           )
         })
       }
 
       /** Creates all of the rows for the list */
-      def doRows(items: List[MapperType], itemsPerPage: Int, appearance: Appearance.Value)(in: NodeSeq): NodeSeq = {
+      def doRows(items: List[MapperType], itemsPerPage: Int, appearance: Appearance.Value)
+          (in: NodeSeq): NodeSeq = {
         var rowCount = 0
         items.take(itemsPerPage).flatMap {c =>
           rowCount += 1
+          val (custom, regular) = getVisibleEntries(c, appearance).partition(x =>
+            in \\ ("entry_" + x.id) != NodeSeq.Empty
+          )
+          var entryCount = regular.length - 1
           bind("row", in ,
-               "entry" -> doEntries(c.entries, appearance) _,
                "view" -> ((label: NodeSeq) =>
-                 <a href={viewPathString + "/" + urlFriendlyPrimaryKey(c)}>{label}</a>),
+                 <a href={viewPathString + "/" + urlFriendlyPrimaryKey(c)}>{label}</a>) ::
 
-               "delete" ->((label: NodeSeq) =>
+               "delete" -> ((label: NodeSeq) =>
                  if(deleteAuthorization(c))
                    <a href={deletePathString + "/" + urlFriendlyPrimaryKey(c)}>{label}</a>
                  else
-                   NodeSeq.Empty),
-               FuncAttrBindParam("class", _ => Text("row " + countClass("row", rowCount)), "class"))
+                   NodeSeq.Empty) ::
+               "entry" -> doEntries(regular, appearance) _  ::
+               FuncAttrBindParam("class", _ => Text("row " + countClass("row", rowCount)), "class") ::
+               custom.map(x => {
+                 entryCount += 1
+                 ("entry_" + x.id) -> ((in: NodeSeq) => doEntries(List(x), appearance, entryCount)(in))
+               }): _*
+          )
         }
       }
 
@@ -345,18 +366,31 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
 
         val appearance = if(RichDisplay) Appearance.RichSummary else  Appearance.Summary
 
-        //Bind all the fields we need
-        bind(listAction, richifiedTemplate,
-             "richview" -> SHtml.ajaxCheckbox(RichDisplay, v => {RichDisplay(v); redraw()}) ::
-             "itemsperpage" -> SHtml.ajaxSelect(itemCountAlternatives,
-                                                Full(itemsPerPage.toString),
-                                                v => {DisplayItemsPerPage(v.toInt); FirstItemIndex(0); redraw()})::
-             "pagenr" -> Text((Math.ceil(firstIndex.toFloat / itemsPerPage).toInt + 1).toString) ::
-             "header" -> doHeaders(appearance) _ ::
-             "row" -> doRows(list, itemsPerPage, appearance) _ ::
-             "prev" -> prev(itemsPerPage) _ ::
-             "next" -> next(itemsPerPage, list.length) _ ::
-             listBindParams(redraw): _*)
+        //Bind everythign except headers
+        val body = bind(listAction, richifiedTemplate,
+          "richview" -> SHtml.ajaxCheckbox(RichDisplay, v => {RichDisplay(v); redraw()}) ::
+          "itemsperpage" -> SHtml.ajaxSelect(itemCountAlternatives,
+                                             Full(itemsPerPage.toString),
+                                             v => {DisplayItemsPerPage(v.toInt); FirstItemIndex(0); redraw()})::
+          "pagenr" -> Text((Math.ceil(firstIndex.toFloat / itemsPerPage).toInt + 1).toString) ::
+          "row" -> doRows(list, itemsPerPage, appearance) _ ::
+          "prev" -> prev(itemsPerPage) _ ::
+          "next" -> next(itemsPerPage, list.length) _ ::
+          listBindParams(redraw): _*)
+
+        //Split up all the entries in groups: those that have custom headers
+        //in the template and those who don't
+        val (custom, regular) = getVisibleEntries(EntryCRD.this, appearance).partition(x =>
+          body \\ ("header_" + x.id) != NodeSeq.Empty
+        )
+
+        //Customize headers
+        bind(listAction, body,
+          "header" -> doHeaders(regular, appearance) _ ::
+          custom.map(x =>
+            ("header_" + x.id) -> ((in: NodeSeq) => doHeaders(List(x), appearance)(in))
+          ): _*
+        )
       }
 
       inner
