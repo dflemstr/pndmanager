@@ -120,8 +120,6 @@ object Package extends Package with LongKeyedMetaMapper[Package]
     val american = strings.find(_.locale.is == "en_US")
     val english = strings.find(_.locale.is contains "en")
 
-    Log.info(List(localized, badLocalized, american, english))
-
     val best = List(localized, badLocalized, american, english)
       .find(_ match {case Some(_) => true; case None => false})
 
