@@ -27,6 +27,7 @@ object User extends User with MetaOpenIDProtoUser[User] {
   override val basePath: List[String] = "user" :: Nil
   def openIDVendor = pndmanager.util.openid.Vendor
 
+  /** Get hold of the user with the specified OpenID info */
   def findOrCreate(openId: String, verResult: VerificationResult): User =
     find(By(this.openId, openId)) match {
       case Full(u) => u
@@ -36,6 +37,7 @@ object User extends User with MetaOpenIDProtoUser[User] {
         def extractFields(extractor: (String) => String): (String, String, String, String) =
           (extractor("email"), extractor("nickname"), extractor("language"), extractor("timezone"))
 
+        /** Populates fields from OpenID metadata */
         def getFields: PartialFunction[MessageExtension, (String, String, String, String)] = {
           case f: FetchResponse => try {
             extractFields(x => f.getAttributeValues(x).get(0).asInstanceOf[String])
@@ -46,8 +48,10 @@ object User extends User with MetaOpenIDProtoUser[User] {
           case _ => (null, null, null, null)
         }
 
+        /** Wraps a string in a box */
         def wrapField(f: String) = if(f == null || f.length < 1) Empty else Full(f)
 
+        /** Corrects language fields that have the wrong case */
         def correctLanguage(l: Box[String]) = l match {
           case Full(l) => 
             val low = l.toLowerCase.replace("-", "_")

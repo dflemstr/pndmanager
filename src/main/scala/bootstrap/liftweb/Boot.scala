@@ -46,11 +46,12 @@ class Boot {
   }
 
   private def schemifyMappers() =
+    //Actually create tables for our model objects
     Schemifier.schemify(true, Log.infoF _, User, Package, Category,
                         LocalizedPackageDescription, LocalizedPackageTitle)
 
   private def createData() = {
-    //This is a hack to get categories, and might destroy category mappings on production systems
+    //This is a quick way to get categories when first starting the application
     if(Category.count == 0) {
       Props.get("pndmanager.defaultcategories", "").split(":").filter(_ matches """[\w/._\- ]+""").foreach(Category.create.name(_).save)
       Log.info("Created some categories, count: " + Category.count) //don't translate
@@ -71,9 +72,15 @@ class Boot {
   }
   
   private def buildSiteMap() = {
-    val userMenu = Menu(Loc("user", List("user", "index"), S.?("menu.user")), User.sitemap: _*)
+    //We use defs here, because we need to reload translations every time.
+    def homeText = S.?("menu.home")
+    def apiinfoText = S.?("menu.apiinfo")
+    def userText = S.?("menu.user")
+    def packageText =  S.?("menu.package")
+    
+    val userMenu = Menu(Loc("user", List("user", "index"), userText), User.sitemap: _*)
 
-    val packageMenu = Menu(Loc("package", List("packages", "index"), S.?("menu.package")),
+    val packageMenu = Menu(Loc("package", List("packages", "index"), packageText),
                            Package.listMenu("Package.list").open_!,
                            Package.createMenu("Package.create").open_!,
                            Package.deleteMenu("Package.delete").open_!,
@@ -84,9 +91,10 @@ class Boot {
     val userAdminMenu = Menu(Loc("useradmin", List("useradmin", "index"), "[admin] User administration", adminAuthorization),
                              User.adminListMenu.open_!)
 
-    val entries = Menu(Loc("home", List("index"), S.?("menu.home"))) ::
-                  packageMenu :: userMenu :: categoryAdminMenu :: userAdminMenu ::
-                  Menu(Loc("apiinfo", List("apiinfo"), S.?("menu.apiinfo"))) :: Nil
+    //Put all of the menus in sequence
+    val entries = Menu(Loc("home", List("index"), homeText)) ::
+                       packageMenu :: userMenu :: categoryAdminMenu :: userAdminMenu ::
+                       Menu(Loc("apiinfo", List("apiinfo"), apiinfoText)) :: Nil
 
     LiftRules.setSiteMap(SiteMap(entries:_*))
   }

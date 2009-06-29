@@ -1,4 +1,4 @@
-package se.dflemstr.pndmanager.model.entry
+package se.dflemstr.pndmanager.util.entrysystem
 
 import _root_.net.liftweb._
 import _root_.net.liftweb.util._
@@ -113,8 +113,6 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
       .filter(_.isInstanceOf[Sortable[_, _]])
       .map(entry => (entry.asInstanceOf[Sortable[_, MapperType]], None)): _*
   ))
-
-
 
   /** Finds the specified number of mappers with the specified offset using the listQueryParams */
   private def findForList(start: Long, count: Int): List[MapperType] =
@@ -351,6 +349,8 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
         //The list of items to display
         val list = findForList(FirstItemIndex.toInt, itemsPerPage + 1)
 
+        //TODO: The template generation is expensive; can we cache it?
+
         //The rich version of the list can have a completely different design
         //compared to the ordinary list, thusly:
         val richifiedTemplate =
@@ -371,7 +371,7 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
           "richview" -> SHtml.ajaxCheckbox(RichDisplay, v => {RichDisplay(v); redraw()}) ::
           "itemsperpage" -> SHtml.ajaxSelect(itemCountAlternatives,
                                              Full(itemsPerPage.toString),
-                                             v => {DisplayItemsPerPage(v.toInt); FirstItemIndex(0); redraw()})::
+                                             v => {DisplayItemsPerPage(v.toInt); FirstItemIndex(0); redraw()}) ::
           "pagenr" -> Text((Math.ceil(firstIndex.toFloat / itemsPerPage).toInt + 1).toString) ::
           "row" -> doRows(list, itemsPerPage, appearance) _ ::
           "prev" -> prev(itemsPerPage) _ ::

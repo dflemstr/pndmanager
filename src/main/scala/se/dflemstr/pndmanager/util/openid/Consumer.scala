@@ -10,7 +10,7 @@ class Consumer[T] extends OpenIdConsumer[T] {
   override def authRequest(userSuppliedString: String, targetUrl: String): LiftResponse = {
     val returnToUrl = S.encodeURL(S.hostAndPath + targetUrl)
 
-    Log.info("Creating openId auth request. returnToUrl: " + returnToUrl)
+    Log.info("Creating openId auth request. Return to url: " + returnToUrl)
 
     val discoveries = manager.discover(userSuppliedString)
     val discovered = manager.associate(discoveries)
@@ -19,7 +19,7 @@ class Consumer[T] extends OpenIdConsumer[T] {
 
     val authReq = manager.authenticate(discovered, returnToUrl)
 
-    val sregReq: SRegRequest = SRegRequest.createFetchRequest()
+    val sregReq = SRegRequest.createFetchRequest()
     sregReq.addAttribute("email", true)
     sregReq.addAttribute("nickname", true)
     sregReq.addAttribute("language", true)

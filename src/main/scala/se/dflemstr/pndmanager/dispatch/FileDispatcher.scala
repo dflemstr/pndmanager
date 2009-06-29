@@ -7,6 +7,9 @@ import http._
 import util._
 import mapper._
 
+/**
+ * Manages files provided by this application
+ */
 object FileDispatcher {
   val dispatcher: PartialFunction[Req, () => Box[LiftResponse]] = {
     //The following suffix hack is require dbecause Lift likes to mess with me
@@ -34,12 +37,12 @@ object FileDispatcher {
     Full(InMemoryResponse(thePackage.thumbnail, ("Content-Type" -> "image/png") :: Nil, Nil, 200))
   }
 
-  def pndFile(identifier: String): Box[LiftResponse] = {
-    Log.info("A file is being downloaded: " + identifier) //don't translate!
+  def pndFile(id: String): Box[LiftResponse] = {
+    Log.info("A file is being downloaded: " + id) //don't translate!
     val masterRegex = "^" + PXML.idRegex + """-(\d+\.){3}\d+\.pnd$"""
     
-    if(identifier matches masterRegex) {
-      val nameParts = identifier.split("-")
+    if(id matches masterRegex) {
+      val nameParts = id.split("-")
       val versionString = (nameParts.last take (nameParts.last.length - 4)).toString
       val actualName = (nameParts take (nameParts.length - 1)).mkString("")
       val version = makeVersion(versionString.split('.').toList)

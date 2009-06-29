@@ -1,4 +1,4 @@
-package se.dflemstr.pndmanager.model.entry
+package se.dflemstr.pndmanager.util.entrysystem
 
 import _root_.net.liftweb.mapper.{Mapper, By, MappedField}
 import _root_.net.liftweb.util._
@@ -24,10 +24,10 @@ trait RESTApi[T, M <: EntryProvider[T, M]] extends EntryCRD[T, M] with XMLApiHel
   lazy val digestAccessNode = "digest"
 
   private def toXML(item: M, appearance: Appearance.Value, detailsLink: Boolean): NodeSeq =
-    createItem(item.entries.map(_ match {
-      case a: APIExposed[_] => Text("    ") :: a.asXML :: Text("\n") :: Nil
-      case _ => Nil
-    }).flatMap(x => x), detailsLink, item)
+  createItem(item.entries.map(_ match {
+    case a: APIExposed[_] => Text("    ") :: a.asXML :: Text("\n") :: Nil
+    case _ => Nil
+  }).flatMap(x => x), detailsLink, item)
 
   def dispatch: LiftRules.DispatchPF = {
     case Req(List(`apiNode`, `elementAccessNode`, id), "xml", GetRequest) =>

@@ -48,7 +48,7 @@ object CustomFlot
     </head>
   }
 
-  def renderCapability (fRender: FlotCapability => JsCmd, caps: FlotCapability *): JsCmd =
+  def renderCapability(fRender: FlotCapability => JsCmd, caps: FlotCapability *): JsCmd =
   caps.foldLeft(Noop)((js, cap) => js & fRender(cap))
 
   def renderJs (

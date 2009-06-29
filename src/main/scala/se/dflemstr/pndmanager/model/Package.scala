@@ -6,15 +6,13 @@ import _root_.java.text.DateFormat
 import _root_.scala.xml._
 import _root_.scala.collection.mutable
 
-import net.liftweb._
-import net.liftweb.sitemap._
-import net.liftweb.sitemap.Loc._
-import net.liftweb.mapper._
-import net.liftweb.http._
-import net.liftweb.util._
-import net.liftweb.util.Helpers._
-import net.liftweb.http.js._
-import net.liftweb.http.js.JsCmds._
+import _root_.net.liftweb._
+import _root_.net.liftweb.sitemap._
+import _root_.net.liftweb.mapper._
+import _root_.net.liftweb.http._
+import _root_.net.liftweb.util._
+import _root_.net.liftweb.util.Helpers._
+import _root_.net.liftweb.http.js._
 
 import _root_.java.awt.image.BufferedImage
 import _root_.java.awt.{AlphaComposite,Image,RenderingHints}
@@ -24,13 +22,19 @@ import _root_.java.io.ByteArrayOutputStream
 import _root_.se.dflemstr.pndmanager.util._
 import _root_.se.dflemstr.pndmanager.util.binary._
 import _root_.se.dflemstr.pndmanager.util.model._
-import _root_.se.dflemstr.pndmanager.model.entry._
+import _root_.se.dflemstr.pndmanager.util.entrysystem._
 
 /** The MetaMapper for package objects */
 object Package extends Package with LongKeyedMetaMapper[Package] 
     with EntryCRD[Long, Package] with RESTApi[Long, Package] {
+
   override def fieldOrder = List(name, category, version, owner, updatedOn, pndFile, valid)
 
+  //
+  // The following fields are all customizations for the EntryCRD framework
+  //
+
+  /** Single-word description of this object */
   override val baseName = "package"
 
   override def spamProtection = true
@@ -66,21 +70,27 @@ object Package extends Package with LongKeyedMetaMapper[Package]
   /** Contains the "search string" provided by the user */
   object FilterString extends SessionVar[String]("")
 
+  /** Contains the category that is being filtered */
   object FilterCategory extends SessionVar[Option[Category]](None)
 
+  /** All of the available alternatives for the category filter */
   def filterCategoryAlternatives = 
     ("0", S.?("package.categorylist.nofilter")) ::
     Category.findAll.map(x => (x.id.toString, x.name.toString)).toList
 
+  /** The authorization needed to create packages; very simple */
   override def createAuthorization = User.loggedIn_?
 
+  /** Tells us if we are allowed to delete the specified package */
   override def deleteAuthorization(p: Package) = try {
     User.loggedIn_? &&
       (p.owner == (User.currentUser openOr 0l) || (User.currentUser.map(_.superUser.is) openOr false))
   } catch { case _ => false }
 
+  /** Notifies the dispatcher that a package has been created - used for notifications */
   def notifyDispatcher(p: Package) = PackageNotificationDispatcher ! NewPackageNotification(p)
 
+  /** Additional params needed for the list template */
   override def listBindParams(redraw: () => JsCmd): List[BindParam] =
     ("searchbox" -> SHtml.ajaxText(FilterString, x => {FilterString(x); FirstItemIndex(0); redraw()})) ::
     ("categoryfilter" -> SHtml.ajaxSelect(filterCategoryAlternatives, Full(FilterCategory.get match {
@@ -112,6 +122,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
     try {Text(formatter.format(date))} catch { case _ => <em>{S.?("package.updated.corrupted")}</em>}
   }
 
+  /** Find the translation most suitable for the current user from the specified strings */
   private def findBestTranslation(strings: List[LocalizedString[_]]): (String, NodeSeq) = {
     val country = S.locale.getCountry
     
@@ -129,6 +140,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
     }
   }
 
+  /** Rebuild the image set for the specified package */
   private def updateImages(p: Package, image: BufferedImage) = {
     val thumb = createResizedCopy(image, (100, 75))
     val shot = createResizedCopy(image, (200, 150))
@@ -232,11 +244,14 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     List(screenshot, thumbnail, title, name, category, version, description, owner, updatedOn, pndFile)
     
   def getSingleton = Package
-    
-  def downloadLoc = Loc("package-" + name.is + "-" + version.is,
-                        List("package", name.is + "-" + version.toHumanReadable + ".pnd"),
-                        S.?("package.download"))
 
+  def downloadLinkText = S.?("package.download")
+
+  def downloadLoc = Loc("package-" + name.is + "-" + version.is,
+                        new Loc.Link(List("package", name.is + "-" + version.toHumanReadable + ".pnd"), false),
+                        new Loc.LinkText(_ => Text(downloadLinkText)))
+
+  /** The user that created the package, and has delete rights on it */
   object owner extends MappedLongForeignKey(this, User)
       with ShowInRichSummary[Package] with Sortable[Long, Package] with APIExposed[Package] {
     val id = "owner"
@@ -245,6 +260,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     def asXML = <owner>{asHtml.text}</owner>
   }
 
+  /** The time at which the package was last updated. Almost always is the creation date */
   object updatedOn extends MappedDateTime(this) with ShowInRichSummary[Package] with Sortable[Date, Package] with APIExposed[Package] {
     val id = "updated"
     override def displayName = S.?("package.updated")
@@ -253,7 +269,8 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     def asXML = <updatedon>{is.getTime / 1000}</updatedon>
   }
 
-  object pndFile extends MappedBinary(this) with Editable[Package]
+  /** The actual PND file that provides all the data needed for this package */
+  object pndFile extends MappedBinary(this) with Editable[Package] //TODO: make this separate so as to reduce query times + mem usage
       with ShowInDigest[Package] with APIExposed[Package] {
     val id = "pnd"
     override def displayName = S.?("package.pndfile")
@@ -284,6 +301,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
       }</pndfile>
   }
 
+  /** The name of the package */
   object name extends MappedPoliteString(this, 64) with ShowInDigest[Package]
       with Sortable[String, Package] with APIExposed[Package] {
     val id = "name"
@@ -295,6 +313,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     def asXML = <name>{is}</name>
   }
 
+  /** The category of the package. Has nothing to do with the menu category provided by PXML files */
   object category extends MappedLongForeignKey(this, Category) with ShowInSummary[Package]
       with Sortable[Long, Package] with Editable[Package] with APIExposed[Package] {
     val id = "category"
@@ -309,12 +328,13 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     def asXML = <category>{Category.find(is).map(_.name.is) openOr unknown}</category>
   }
 
+  /** The package version */
   object version extends MappedString(this, 32) with ShowInDigest[Package]
       with Sortable[String, Package] with APIExposed[Package] {
     val id = "version"
-    //The actual value of this is a 16 char hex string, so
-    //that it becomes easy to sort versions since it can be done alphabetically
-    // (And I didn't want to create a custom MappedField just for this)
+    //The actual value of this is a 16 char hex string, making it
+    //easy to sort versions since it can be done alphabetically
+    //(And I didn't want to create a custom MappedField just for this)
     override def displayName = S.?("package.version")
 
     protected def pad(value: String) =
@@ -348,8 +368,10 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     def asXML = <version>{is}</version>
   }
 
+  /** Specifies if this package is valid or not. Almost unused. */
   object valid extends MappedBoolean(this)
 
+  /** The localized description of this package */
   object description extends ShowInDetail[Package] {
     val id = "description"
     def displayHtml = Text(S.?("package.description"))
@@ -361,6 +383,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     }
   }
 
+  /** The localized title of this package */
   object title extends ShowInRichSummary[Package] {
     val id = "title"
 
@@ -373,6 +396,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     }
   }
 
+  /** A thumbnail image for this package */
   object thumbnail extends MappedBinary(this) with Visible[Package] {
     val id = "thumbnail"
 
@@ -393,6 +417,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
       }</div>
   }
 
+  /** A screenshot of this package's contents */
   object screenshot extends MappedBinary(this) with ShowInDetail[Package] with APIExposed[Package] {
     val id = "screenshot"
 
@@ -408,5 +433,4 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     }</div>
     def asXML = <screenshot>{S.hostAndPath + "/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"}</screenshot>
   }
-
 }

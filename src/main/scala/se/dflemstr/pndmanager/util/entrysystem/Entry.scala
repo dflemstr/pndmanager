@@ -1,4 +1,4 @@
-package se.dflemstr.pndmanager.model.entry
+package se.dflemstr.pndmanager.util.entrysystem
 
 import _root_.net.liftweb.mapper._
 import _root_.scala.xml._

@@ -14,6 +14,7 @@ class Packages {
   /** A snippet that inserts the package count where it's used */
   def count: NodeSeq = Text(Package.count.toString)
 
+  /** Create a small digest with the most important package information */
   def digest(template: NodeSeq): NodeSeq = {
     Package.findAll(StartAt(0), MaxRows(10), OrderBy(Package.updatedOn, Ascending))
       .flatMap(x => bind("digest", template,

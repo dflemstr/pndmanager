@@ -1,0 +1,25 @@
+The PND Package Manager
+-----------------------
+
+This is the source distribution of the PND Package Manager.
+This might or might not be the latest version of the code;
+to gain acccess to the absolutely latest version,  and to get
+information about how to use the applcation, please visit:
+http://github.com/dflemstr/pndmanager
+
+Specifically, there is documentation available that is targetted
+at different user groups, that also can be found at GitHub:
+
+→ Users of the application:
+Please see: http://wiki.github.com/dflemstr/pndmanager/administration-instructions
+
+→ Contributors (designers and programmers):
+Please see: http://wiki.github.com/dflemstr/pndmanager/development-instructions
+
+→ Translators:
+Plase see: http://wiki.github.com/dflemstr/pndmanager/translation-instructions
+
+The "pndmanager" code is distributed under the Apache 2.0 
+license, which is a license that is compatible with GNU GPLv3.
+The full license can be found at:
+http://www.apache.org/licenses/LICENSE-2.0.html
