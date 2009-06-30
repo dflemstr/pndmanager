@@ -1,11 +1,11 @@
 package se.dflemstr.pndmanager.snippet
 
-import model._
+import _root_.se.dflemstr.pndmanager.model._
 import _root_.net.liftweb._
-import util._
-import http._
-import sitemap._
-import Loc._
+import _root_.net.liftweb.util._
+import _root_.net.liftweb.http._
+import _root_.net.liftweb.sitemap._
+import _root_.net.liftweb.sitemap.Loc._
 import _root_.scala.xml._
 import _root_.java.util.Locale
 

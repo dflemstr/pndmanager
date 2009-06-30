@@ -1,7 +1,7 @@
 package se.dflemstr.pndmanager.snippet
 
-import scala.xml.{NodeSeq, Text, Elem}
-import net.liftweb.http.S
+import _root_.scala.xml.{NodeSeq, Text, Elem}
+import _root_.net.liftweb.http.S
 import _root_.net.liftweb.sitemap.SiteMap
 
 /** Snippets that provide global application information and functionality */

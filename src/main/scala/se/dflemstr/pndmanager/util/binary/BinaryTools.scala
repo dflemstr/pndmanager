@@ -1,5 +1,7 @@
 package se.dflemstr.pndmanager.util.binary
 
+//Pure Scala! No imports!
+
 /**
  * Contains various tools that are useful when parsing binaries of various types
  */

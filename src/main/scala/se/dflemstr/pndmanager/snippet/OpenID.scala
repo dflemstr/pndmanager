@@ -1,6 +1,6 @@
 package se.dflemstr.pndmanager.snippet
 
-import model._
+import _root_.se.dflemstr.pndmanager.model._
 import _root_.scala.xml._
 
 /** Provides various OpenID-related snippets */

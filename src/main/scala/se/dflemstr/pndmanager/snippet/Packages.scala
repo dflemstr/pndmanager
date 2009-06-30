@@ -1,7 +1,7 @@
 package se.dflemstr.pndmanager.snippet
 
-import se.dflemstr.pndmanager.model.{Package, Category}
-import util._
+import _root_.se.dflemstr.pndmanager.model.{Package, Category}
+import _root_.se.dflemstr.pndmanager.util._
 import _root_.scala.xml.{NodeSeq,Text}
 import _root_.net.liftweb.http._
 import _root_.net.liftweb.mapper._

@@ -1,8 +1,8 @@
 package se.dflemstr.pndmanager.util
 
 import _root_.scala.actors._
-import Actor._
-import pndmanager.model._
+import _root_.scala.actors.Actor._
+import _root_.se.dflemstr.pndmanager.model._
 
 sealed trait NotificationMessage
 

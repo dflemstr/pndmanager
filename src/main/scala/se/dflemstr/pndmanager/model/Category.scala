@@ -1,13 +1,13 @@
 package se.dflemstr.pndmanager.model
 
-import java.util.Date
-import java.text.DateFormat
-import net.liftweb._
-import mapper._
-import http._
-import SHtml._
-import util._
-import scala.xml._
+import _root_.java.util.Date
+import _root_.java.text.DateFormat
+import _root_.net.liftweb._
+import _root_.net.liftweb.mapper._
+import _root_.net.liftweb.http._
+import _root_.net.liftweb.http.SHtml._
+import _root_.net.liftweb.util._
+import _root_.scala.xml._
 
 /** The MetaMapper for categories */
 object Category extends Category with LongKeyedMetaMapper[Category] with LongCRUDify[Category] {

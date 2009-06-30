@@ -1,11 +1,11 @@
 package se.dflemstr.pndmanager.util.binary
 
-import scala.xml._
-import net.liftweb.util.{Box,Full,Empty,Failure}
-import net.liftweb.http.{FieldError, FieldIdentifier, S}
-import java.awt.image.BufferedImage
-import javax.imageio.ImageIO
-import java.io.ByteArrayInputStream
+import _root_.scala.xml._
+import _root_.net.liftweb.util.{Box,Full,Empty,Failure}
+import _root_.net.liftweb.http.{FieldError, FieldIdentifier, S}
+import _root_.java.awt.image.BufferedImage
+import _root_.javax.imageio.ImageIO
+import _root_.java.io.ByteArrayInputStream
 
 object PND {
   private lazy final val ReversedPXMLStartPattern = PXML.BinaryStartPattern.reverse

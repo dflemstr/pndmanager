@@ -2,12 +2,12 @@ package bootstrap.liftweb
 
 import _root_.se.dflemstr.pndmanager.util._
 import _root_.net.liftweb.util._
+import _root_.net.liftweb.util.Helpers._
 import _root_.net.liftweb.openid.SimpleOpenIdVendor
 import _root_.net.liftweb.http._
 import _root_.net.liftweb.http.js.{JsCmds,JE}
 import _root_.net.liftweb.sitemap._
-import Loc._
-import Helpers._
+import _root_.net.liftweb.sitemap.Loc._
 import _root_.net.liftweb.mapper.{DB, ConnectionManager, Schemifier, DefaultConnectionIdentifier, ConnectionIdentifier}
 import _root_.java.sql.{Connection, DriverManager}
 import _root_.se.dflemstr.pndmanager.model._

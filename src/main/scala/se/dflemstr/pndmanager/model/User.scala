@@ -1,17 +1,17 @@
 package se.dflemstr.pndmanager.model
 
-import scala.xml.Text
-import net.liftweb._
-import mapper._
-import http._
-import js._
-import sitemap.{Loc,Menu}
-import Loc._
-import SHtml._
-import util._
-import Helpers._
-import net.liftweb.openid._
-import scala.xml._
+import _root_.scala.xml.Text
+import _root_.net.liftweb._
+import _root_.net.liftweb.mapper._
+import _root_.net.liftweb.http._
+import _root_.net.liftweb.http.js._
+import _root_.net.liftweb.sitemap.{Loc,Menu}
+import _root_.net.liftweb.sitemap.Loc._
+import _root_.net.liftweb.http.SHtml._
+import _root_.net.liftweb.util._
+import _root_.net.liftweb.util.Helpers._
+import _root_.net.liftweb.openid._
+import _root_.scala.xml._
 
 import _root_.org.openid4java.message.MessageExtension
 import _root_.org.openid4java.message.ax.{AxMessage, FetchResponse}

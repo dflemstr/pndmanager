@@ -1,11 +1,11 @@
 package se.dflemstr.pndmanager.dispatch
 
-import util.binary.PXML
-import model.Package
+import _root_.se.dflemstr.pndmanager.util.binary.PXML
+import _root_.se.dflemstr.pndmanager.model.Package
 import _root_.net.liftweb._
-import http._
-import util._
-import mapper._
+import _root_.net.liftweb.http._
+import _root_.net.liftweb.util._
+import _root_.net.liftweb.mapper._
 
 /**
  * Manages files provided by this application

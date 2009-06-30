@@ -1,7 +1,7 @@
 package se.dflemstr.pndmanager.util.model
 
-import java.util.Locale
-import net.liftweb.mapper._
+import _root_.java.util.Locale
+import _root_.net.liftweb.mapper._
 
 /** A "localized string" mapper type, binding a locale and a string together */
 trait LocalizedString[T <: LongKeyedMapper[T]] extends LongKeyedMapper[T] with IdPK {

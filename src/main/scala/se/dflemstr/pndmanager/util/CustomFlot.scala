@@ -1,13 +1,13 @@
 package se.dflemstr.pndmanager.util
 
+import _root_.scala.xml.{NodeSeq, Node, PCData, Text, Unparsed}
 import _root_.net.liftweb.widgets.flot._
-import scala.xml.{NodeSeq, Node, PCData, Text, Unparsed}
 import _root_.net.liftweb.http.{LiftRules}
 import _root_.net.liftweb.http.js._
-import JsCmds._
-import JE._
+import _root_.net.liftweb.http.js.JsCmds._
+import _root_.net.liftweb.http.js.JE._
 import _root_.net.liftweb.util._
-import Helpers._
+import _root_.net.liftweb.util.Helpers._
 
 object CustomFlot
 {

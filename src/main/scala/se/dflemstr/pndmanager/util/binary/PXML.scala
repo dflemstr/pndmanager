@@ -1,8 +1,8 @@
 package se.dflemstr.pndmanager.util.binary
 
-import scala.xml._
-import net.liftweb.http.{FieldError, FieldIdentifier,S}
-import net.liftweb.util.{Box,Full,Empty,Failure}
+import _root_.scala.xml._
+import _root_.net.liftweb.http.{FieldError, FieldIdentifier,S}
+import _root_.net.liftweb.util.{Box,Full,Empty,Failure}
 
 object PXML {
   /** The pattern to search for when searching for the end of a PXML file in a binary */
