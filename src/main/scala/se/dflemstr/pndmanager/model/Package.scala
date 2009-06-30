@@ -184,7 +184,6 @@ object Package extends Package with LongKeyedMetaMapper[Package]
    */
   def creationProcess(p: Package): List[FieldError] = p.pndFile.validate match {
     case Nil =>
-      p.save //just so that we get an ID; neccessary for associating localized strings
       try {
         val pnd = PND(p.pndFile.is)
         val pxml = PXML.fromPND(pnd) match {
@@ -199,6 +198,23 @@ object Package extends Package with LongKeyedMetaMapper[Package]
         pxml.validateVersion() //throws exceptions with explanations
         p.version.fromTuple(pxml.version)
 
+        Package.findAll(By(name, p.name.is), By(version, p.version.is)).drop(1)
+          .foreach(_ => error(S.?("package.error.dupe")))
+
+        pnd.PNGdata match {
+          case Full(image) => updateImages(p, image)
+          case Empty => S.warning(S.?("package.warning.noscreenshot"))
+          case Failure(x, _, _) => S.warning(S.?("package.warning.invalidscreenshot") replace ("%error%", x))
+        }
+
+        p.owner(User.currentUser)
+
+        p.updatedOn(new Date())
+        
+        p.valid(true)
+
+        p.save //just so that we get an ID; neccessary for associating localized strings
+
         //The description will be Nil automatically if none were found.
         if(pxml.description.length == 0)
           S.warning(S.?("package.warning.nodescriptions"))
@@ -212,18 +228,6 @@ object Package extends Package with LongKeyedMetaMapper[Package]
 
         pxml.title.foreach(t => LocalizedPackageTitle
                            .create.owner(p).string(t._1).locale(t._2).save)
-
-        pnd.PNGdata match {
-          case Full(image) => updateImages(p, image)
-          case Empty => S.warning(S.?("package.warning.noscreenshot"))
-          case Failure(x, _, _) => S.warning(S.?("package.warning.invalidscreenshot") replace ("%error%", x))
-        }
-
-        p.owner(User.currentUser)
-
-        p.updatedOn(new Date())
-        
-        p.valid(true)
 
         notifyDispatcher(p)
 
