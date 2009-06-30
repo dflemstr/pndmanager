@@ -9,6 +9,7 @@
 
 .container {
     width: 790px !important;
+    position: relative;
 }
 
 p {
@@ -33,7 +34,17 @@ p {
 
 /* Page header */
 .page-header {
+    text-align: left;
+}
+
+.page-header-background {
     background: transparent url(../images/banner.png) center right no-repeat;
+    position: absolute;
+    top: -30px;
+    left: 0;
+    height: 150px;
+    width: 790px;
+    z-index: -1;
 }
 
 .page-header h1 a {
