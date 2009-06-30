@@ -130,7 +130,7 @@ object User extends User with MetaOpenIDProtoUser[User] {
 
     bind("user", xhtml,
          "openid" -> (js.JsCmds.FocusOnLoad(<input type="text" name="username"/>)),
-         "submit" -> (<input type="submit" value={S.??("log.in")}/>))
+         "submit" -> (<input type="submit" value={S.?("user.login")}/>))
   }
 
   /** Create an edit form with the specified template */
@@ -143,7 +143,7 @@ object User extends User with MetaOpenIDProtoUser[User] {
           if(Props.get("pndmanager.adminuname") == theUser.nickname.is)
             theUser.superUser(true)
           theUser.save
-          S.notice(S.??("profile.updated"))
+          S.notice(S.?("user.profile.updated"))
           S.redirectTo(S.referer openOr "/")
 
         case xs =>
@@ -154,13 +154,21 @@ object User extends User with MetaOpenIDProtoUser[User] {
 
     def innerEdit = bind("user", xhtml,
       "field" -> ((x: NodeSeq) => localForm(x, theUser, true)),
-      "submit" -> ((_: NodeSeq) => SHtml.submit(S.??("edit"), testEdit _)))
+      "submit" -> ((_: NodeSeq) => SHtml.submit(S.?("user.edit"), testEdit _)))
 
     editFunc.map(_()) openOr innerEdit
   }
 
   /* Make a form with all the editable fields of an user, from a template */
   protected def localForm(xhtml: NodeSeq, user: User, ignorePassword: Boolean): NodeSeq = {
+    def translateField(field: String): String = field match {
+      case "nickname" => S.?("user.nickname")
+      case "First Name" => S.?("user.firstname")
+      case "Last Name" => S.?("user.lastname")
+      case "Locale" => S.?("user.locale")
+      case "Time Zone" => S.?("user.timezone")
+    }
+
     signupFields
       .map(fi => getSingleton.getActualBaseField(user, fi)) //get actual fields
       .filter(f => !ignorePassword || (f match { //remove the password field
@@ -170,15 +178,10 @@ object User extends User with MetaOpenIDProtoUser[User] {
       .flatMap(field => 
           field.toForm.toList.flatMap(form =>
             bind("field", xhtml,
-              "name" ->(if(field.displayName == "nickname")
-                          Text("Nickname")
-                        else
-                          Text(field.displayName)),
+              "name" -> Text(translateField(field.displayName)),
               "form" -> form)
           )
         )
-    //(The nickname hack above is there to fix a translation mistake in the Lift Core)
-    //TODO: fix this upstream
   }
 
   /** Find an user by nickname */
@@ -193,20 +196,20 @@ object User extends User with MetaOpenIDProtoUser[User] {
    * The menu item for login
    */
   override def loginMenuLoc: Box[Menu] =
-    Full(Menu(Loc("user.login", loginPath, S.??("log.in"),
-                  If(User.notLoggedIn_? _, S.??("edit.profile")))))
+    Full(Menu(Loc("user.login", loginPath, S.?("user.login"),
+                  If(User.notLoggedIn_? _, S.?("user.profile.edit")))))
 
   /**
    * The menu item for logout
    */
   override def logoutMenuLoc: Box[Menu] =
-    Full(Menu(Loc("user.logout", logoutPath, S.??("log.out"), testLogginIn)))
+    Full(Menu(Loc("user.logout", logoutPath, S.?("user.logout"), testLogginIn)))
 
   /**
    * The menu item for editing the user
    */
   override def editUserMenuLoc: Box[Menu] =
-    Full(Menu(Loc("user.edit", editPath, S.??("edit.profile"), testLogginIn)))
+    Full(Menu(Loc("user.edit", editPath, S.?("user.profile.edit"), testLogginIn)))
 
   override def createUserMenuLoc: Box[Menu] =  Empty
   override def lostPasswordMenuLoc: Box[Menu] = Empty

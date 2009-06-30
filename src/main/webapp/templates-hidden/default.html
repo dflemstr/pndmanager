@@ -36,7 +36,7 @@
                     <table>
                         <lift:User:online>
                             <tr><td><lift:embed what="translations/loggedinas"/></td></tr>
-                            <tr><td><lift:User.logoutButton>Log out</lift:User.logoutButton></td></tr>
+                            <tr><td><lift:User.logoutButton/></td></tr>
                         </lift:User:online>
                         <lift:User.offline>
                             <lift:User.loginForm form="POST">
@@ -59,9 +59,9 @@
                     <lift:Menu.title/>
                 </h2>
                 <lift:Msgs>
-                    <lift:error_msg>Error</lift:error_msg>
-                    <lift:notice_msg>Information</lift:notice_msg>
-                    <lift:warning_msg>Warning</lift:warning_msg>
+                    <lift:error_msg></lift:error_msg>
+                    <lift:notice_msg></lift:notice_msg>
+                    <lift:warning_msg></lift:warning_msg>
                     <lift:error_class>error</lift:error_class>
                     <lift:notice_class>success</lift:notice_class>
                     <lift:warning_class>notice</lift:warning_class>

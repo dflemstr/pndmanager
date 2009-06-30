@@ -45,7 +45,7 @@ class User {
     S.redirectTo("/")
   }
 
-  def logoutButton(contents: NodeSeq) = SHtml.ajaxButton(contents, () => {
+  def logoutButton = SHtml.ajaxButton(S.?("user.logout"), () => {
     User.logoutCurrentUser
     js.JsCmds.RedirectTo("/")
   })

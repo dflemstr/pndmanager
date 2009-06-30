@@ -20,7 +20,7 @@ class Packages {
       .flatMap(x => bind("digest", template,
                          "name" -> x.name.asHtml,
                          "title" -> x.title.asHtml,
-                         "uploaded" -> x.updatedOn.asHtml,
+                         "updated" -> x.updatedOn.asHtml,
                          "version" -> x.version.asHtml,
                          "pnd" -> x.pndFile.asHtml))
   }

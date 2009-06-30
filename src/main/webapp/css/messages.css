@@ -17,5 +17,4 @@
 .error li, .success li, .notice li {
     margin: 0;
     display: block;
-    padding: 0 0 0 1.3em;
 }
