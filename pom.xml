@@ -126,7 +126,6 @@
           <scanIntervalSeconds>5</scanIntervalSeconds>
         </configuration>
       </plugin>
-<!-- Broken now, too
       <plugin>
         <groupId>net.sf.alchim</groupId>
         <artifactId>yuicompressor-maven-plugin</artifactId>
@@ -138,11 +137,13 @@
           </execution>
         </executions>
         <configuration>
+          <excludes>
+            <exclude>**/*.js</exclude>
+          </excludes>
           <nosuffix>true</nosuffix>
           <nomunge>true</nomunge>
         </configuration>
       </plugin>
--->
       <plugin>
         <groupId>com.mobilvox.ossi.mojo</groupId>
         <artifactId>maven-js-plugin</artifactId>

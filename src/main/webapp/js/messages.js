@@ -2,10 +2,10 @@
  * Animations for the messaging system
  */
 
-jQuery(document).ready(function() {
-    jQuery(".success, .error, .notice").slideDown("slow");
+$(document).ready(function() {
+    $(".success, .error, .notice").slideDown("slow");
 
-    jQuery(".success, .error, .notice").click(function() {
-        jQuery(this).slideUp("slow");
+    $(".success, .error, .notice").click(function() {
+        $(this).slideUp("slow");
     });
 });

@@ -18,42 +18,42 @@ function traversedUp() {
 }
 
 function revealCurrentMenu() {
-    jQuery(".selectedmenu span")
+    $(".selectedmenu span")
         .stop()
         .animate({
             paddingLeft: "15px"
         }, "fast", function() {
-                jQuery(this).addClass("witharrow");
+                $(this).addClass("witharrow");
             });
 
     if(!traversedUp()) {
-        jQuery(".selectedmenu ul")
+        $(".selectedmenu ul")
             .slideDown("fast");
     }
     else {
-        jQuery(".selectedmenu ul").show();
+        $(".selectedmenu ul").show();
     }
 }
 
 function retractCurrentMenu() {
-    jQuery(".selectedmenu span")
+    $(".selectedmenu span")
         .stop()
         .animate({
             paddingLeft: "5px"
         }, "fast").removeClass("witharrow");
 }
 
-jQuery(document).ready(function() {
+$(document).ready(function() {
     if(pageSwitched()) {
-        jQuery(".selectedmenu ul").hide();
-        jQuery(".selectedmenu span").css("padding-left", "5px");
+        $(".selectedmenu ul").hide();
+        $(".selectedmenu span").css("padding-left", "5px");
         revealCurrentMenu();
     }
 
-    jQuery(".menuitem a").hover(retractCurrentMenu, revealCurrentMenu);
+    $(".menuitem a").hover(retractCurrentMenu, revealCurrentMenu);
 
-    jQuery("new-packages").click(function() {
-        jQuery(this).slideUp("fast");
+    $("new-packages").click(function() {
+        $(this).slideUp("fast");
     });
 });
 
@@ -61,12 +61,12 @@ jQuery(document).ready(function() {
  * Gets called by the Lift framework when AJAX happens
  */
 function showAjax() {
-    jQuery("#ajax-loader").fadeIn("normal");
+    $("#ajax-loader").fadeIn("normal");
 }
 
 /*
  * Gets called by the Lift framework when AJAX doesn't happen
  */
 function hideAjax() {
-    jQuery("#ajax-loader").fadeOut("normal");
+    $("#ajax-loader").fadeOut("normal");
 }
