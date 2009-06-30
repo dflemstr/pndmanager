@@ -49,15 +49,10 @@ p {
 }
 
 /* Menu */
-.boxed {
-    border: 1px solid #ccc;
-    padding: 3px;
-}
 
 .sidebar ul {
     margin: 0;
     padding: 0;
-    border-bottom: 1px solid #ccc;
 }
 
 .menuitem ul, .selectedmenu ul {

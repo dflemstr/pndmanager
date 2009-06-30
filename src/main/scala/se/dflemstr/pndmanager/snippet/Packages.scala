@@ -16,7 +16,7 @@ class Packages {
 
   /** Create a small digest with the most important package information */
   def digest(template: NodeSeq): NodeSeq = {
-    Package.findAll(StartAt(0), MaxRows(10), OrderBy(Package.updatedOn, Ascending))
+    Package.findAll(StartAt(0), MaxRows(10), OrderBy(Package.updatedOn, Descending))
       .flatMap(x => bind("digest", template,
                          "name" -> x.name.asHtml,
                          "title" -> x.title.asHtml,
