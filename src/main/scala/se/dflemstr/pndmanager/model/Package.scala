@@ -127,12 +127,17 @@ object Package extends Package with LongKeyedMetaMapper[Package]
     val country = S.locale.getCountry
     
     val localized = strings.find(_.locale.is == S.locale)
-    val badLocalized = strings.find(_.locale.is contains country)
+    val badLocalized =
+      if(country.length > 1)
+        strings.find(_.locale.is startsWith country)
+      else
+        None
+        
     val american = strings.find(_.locale.is == "en_US")
-    val english = strings.find(_.locale.is contains "en")
+    val english = strings.find(_.locale.is startsWith "en")
 
-    val best = List(localized, badLocalized, american, english)
-      .find(_ match {case Some(_) => true; case None => false})
+    val alternatives = List(localized, badLocalized, american, english)
+    val best = alternatives.find(_ match {case Some(_) => true; case None => false})
 
     best match {
       case Some(Some(str)) => (str.locale, Text(str.string))
