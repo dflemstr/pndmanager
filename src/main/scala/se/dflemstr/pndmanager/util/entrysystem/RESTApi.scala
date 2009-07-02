@@ -9,6 +9,10 @@ import _root_.scala.xml._
 trait RESTApi[T, M <: EntryProvider[T, M]] extends EntryCRD[T, M] with XMLApiHelper {
   this: M =>
 
+  var contentHasChanged: Option[Boolean] = None
+
+  private var cachedDigest: Option[NodeSeq] = None
+
   def createTag(in: NodeSeq): Elem = <item-api>{in}</item-api>
   def createItem(in: NodeSeq, detailsLink: Boolean, item: M): Elem = <item>{
     in ++ (
@@ -45,12 +49,28 @@ trait RESTApi[T, M <: EntryProvider[T, M]] extends EntryCRD[T, M] with XMLApiHel
   }
 
   def createDigest: LiftResponse = {
-    val list: NodeSeq =
-      (for(i <- getSingleton.findAll)
-      yield
-        toXML(i, Appearance.Digest, true)
+    def actuallyCreateDigest() = {
+      if(contentHasChanged == Some(true))
+        contentHasChanged = Some(false)
+
+      (
+        for(i <- getSingleton.findAll)
+        yield toXML(i, Appearance.Digest, true)
       ).flatMap(x => x)
-    nodeSeqToResponse(list)
+    }
+    
+    val digest = (contentHasChanged, cachedDigest) match {
+      case (_, None) | (Some(true), _) | (None, _) =>
+        //If we don't have anything cached, something has changed,
+        //or we don't have information about changes, compute new digest
+        val d = actuallyCreateDigest()
+        cachedDigest = Some(d)
+        d
+      case (_, Some(c)) =>
+        //Else, if we have cache, use it
+        c
+    }
+    nodeSeqToResponse(digest)
   }
 
 }

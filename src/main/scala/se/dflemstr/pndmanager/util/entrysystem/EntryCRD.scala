@@ -63,7 +63,10 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
   def deleteAuthorization(m: MapperType): Boolean = true
 
   /** Gets called on submit; is supposed to populate fields of various kinds and check for errors */
-  def creationProcess(mapper: MapperType): List[FieldError]
+  def creationProcess(mapper: MapperType): List[FieldError] = Nil
+
+  /** GEts called before deletion; is supposed to trigger events that should happen at this time */
+  def deletionProcess(mapper: MapperType): Any = {}
 
   /** The primary key for the specified mapper, as an URL-friendly string*/
   def urlFriendlyPrimaryKey(in: MapperType): String = 
@@ -349,7 +352,7 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
         //The list of items to display
         val list = findForList(FirstItemIndex.toInt, itemsPerPage + 1)
 
-        //TODO: The template generation is expensive; can we cache it?
+        //TODO: The template generation is expensive; can we cache it? Probably not...
 
         //The rich version of the list can have a completely different design
         //compared to the ordinary list, thusly:
@@ -453,6 +456,7 @@ trait EntryCRD[KeyType, MapperType <: EntryProvider[KeyType, MapperType]]
     def deleteMapper(m: MapperType)(template: NodeSeq): NodeSeq = {
       val backdoor = origin
       def doSubmit() = {
+        deletionProcess(m)
         m.delete_!
         S.notice(deleteSuccededMsg)
         S.redirectTo(backdoor)

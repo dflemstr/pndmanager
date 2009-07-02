@@ -6,17 +6,39 @@ import _root_.net.liftweb._
 import _root_.net.liftweb.http._
 import _root_.net.liftweb.util._
 import _root_.net.liftweb.mapper._
+import _root_.java.util.{Date, Locale, TimeZone}
+import _root_.java.text.{DateFormat, SimpleDateFormat}
 
 /**
  * Manages files provided by this application
  */
 object FileDispatcher {
+  /** Creates a HTTP header compatible date */
+  def httpDate(date: Date): String = {
+    val httpDateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.US);
+    httpDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+    httpDateFormat.format(date)
+  }
+
+  //Expires after 4 days
+  def cacheHeaders =
+    "Expires" -> httpDate(new Date(new Date().getTime + 345600000l)) ::
+    "Cache-Control" -> "public, max-age=345600" :: Nil
+
+  //Expires after 1 hour
+  //This isn't actually used atm; just if we want to dispatch temporary stuff in the future
+  def freshHeaders =
+    "Expires" -> httpDate(new Date(new Date().getTime + 3600000l)) ::
+    "Cache-Control" -> "max-age=3600, must-revalidate" :: Nil
+
   val dispatcher: PartialFunction[Req, () => Box[LiftResponse]] = {
-    //The following suffix hack is require dbecause Lift likes to mess with me
+    //The following suffix hack is required because Lift likes to mess with me
     case Req("package" :: name :: Nil, suffix, GetRequest) =>
       () => pndFile(name + (if(suffix != null && suffix != "") "." + suffix else ""))
-    case Req("screenshot" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined => () => screenshot(id)
-    case Req("thumbnail" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined => () => thumbnail(id)
+    case Req("screenshot" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined =>
+      () => screenshot(id)
+    case Req("thumbnail" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined =>
+      () => thumbnail(id)
   }
 
   protected def makeVersion(strings: List[String]) = {
@@ -29,12 +51,14 @@ object FileDispatcher {
 
   private def screenshot(id: String): Box[LiftResponse] = {
     val thePackage = Package.find(id).open_!
-    Full(InMemoryResponse(thePackage.screenshot, ("Content-Type" -> "image/png") :: Nil, Nil, 200))
+    Full(InMemoryResponse(thePackage.screenshot,
+                          ("Content-Type" -> "image/png") :: cacheHeaders, Nil, 200))
   }
 
   private def thumbnail(id: String): Box[LiftResponse] = {
     val thePackage = Package.find(id).open_!
-    Full(InMemoryResponse(thePackage.thumbnail, ("Content-Type" -> "image/png") :: Nil, Nil, 200))
+    Full(InMemoryResponse(thePackage.thumbnail, 
+                          ("Content-Type" -> "image/png") :: cacheHeaders, Nil, 200))
   }
 
   def pndFile(id: String): Box[LiftResponse] = {
@@ -52,7 +76,7 @@ object FileDispatcher {
           By(Package.version, Package.version.valueFromTuple(version))) match {
         case Full(p) =>
           Full(InMemoryResponse(p.pndFile,
-                                ("Content-Type" -> "application/x-pandora-pnd") :: Nil, Nil, 200))
+                                ("Content-Type" -> "application/x-pandora-pnd") :: cacheHeaders, Nil, 200))
         case _ => Empty
       }
     }

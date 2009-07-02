@@ -187,7 +187,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
    * Reads the pndFile field and populates all the other fields and entries with
    * acquired information.
    */
-  def creationProcess(p: Package): List[FieldError] = p.pndFile.validate match {
+  override def creationProcess(p: Package): List[FieldError] = p.pndFile.validate match {
     case Nil =>
       try {
         val pnd = PND(p.pndFile.is)
@@ -235,6 +235,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
                            .create.owner(p).string(t._1).locale(t._2).save)
 
         notifyDispatcher(p)
+        contentHasChanged = Some(true) //"notify" the REST API
 
         Nil
       } catch {
@@ -243,6 +244,8 @@ object Package extends Package with LongKeyedMetaMapper[Package]
       }
     case error => error //if the PND itself was erroneous, then step out instantly
   }
+
+  override def deletionProcess(p: Package) = contentHasChanged = Some(true)
 }
 
 class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package] 
@@ -279,7 +282,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   }
 
   /** The actual PND file that provides all the data needed for this package */
-  object pndFile extends MappedBinary(this) with Editable[Package] //TODO: make this separate so as to reduce query times + mem usage
+  object pndFile extends MappedBinary(this) with Editable[Package]
       with ShowInDigest[Package] with APIExposed[Package] {
     val id = "pnd"
     override def displayName = S.?("package.pndfile")
