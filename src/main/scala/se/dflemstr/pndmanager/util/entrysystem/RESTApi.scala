@@ -11,6 +11,16 @@ trait RESTApi[T, M <: EntryProvider[T, M]] extends EntryCRD[T, M] with XMLApiHel
 
   var contentHasChanged: Option[Boolean] = None
 
+  abstract override def creationProcess(mapper: M) = {
+    contentHasChanged = Some(true)
+    super.creationProcess(mapper)
+  }
+
+  abstract override def deletionProcess(mapper: M) = {
+    contentHasChanged = Some(true)
+    super.deletionProcess(mapper)
+  }
+
   private var cachedDigest: Option[NodeSeq] = None
 
   def createTag(in: NodeSeq): Elem = <item-api>{in}</item-api>

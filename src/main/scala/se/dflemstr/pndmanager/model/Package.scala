@@ -235,7 +235,6 @@ object Package extends Package with LongKeyedMetaMapper[Package]
                            .create.owner(p).string(t._1).locale(t._2).save)
 
         notifyDispatcher(p)
-        contentHasChanged = Some(true) //"notify" the REST API
 
         Nil
       } catch {
@@ -244,8 +243,6 @@ object Package extends Package with LongKeyedMetaMapper[Package]
       }
     case error => error //if the PND itself was erroneous, then step out instantly
   }
-
-  override def deletionProcess(p: Package) = contentHasChanged = Some(true)
 }
 
 class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package] 
@@ -269,7 +266,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     val id = "owner"
     override def displayName = S.?("package.owner")
     override def asHtml = Text(User.findByKey(is).map(_.niceName) openOr S.?("package.owner.unknown"))
-    def asXML = <owner>{asHtml.text}</owner>
+    def asXML = <owner>{User.findByKey(is).map(_.openId) openOr S.?("package.owner.unknown")}</owner>
   }
 
   /** The time at which the package was last updated. Almost always is the creation date */
