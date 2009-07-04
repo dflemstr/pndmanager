@@ -147,17 +147,17 @@ object Package extends Package with LongKeyedMetaMapper[Package]
 
   /** Rebuild the image set for the specified package */
   private def updateImages(p: Package, image: BufferedImage) = {
-    val thumb = createResizedCopy(image, (100, 75))
-    val shot = createResizedCopy(image, (200, 150))
+    val small = createResizedCopy(image, (32, 32))
+    val norm = createResizedCopy(image, (64, 64))
 
-    val thumbData = new ByteArrayOutputStream
-    val shotData = new ByteArrayOutputStream
+    val smallData = new ByteArrayOutputStream
+    val normData = new ByteArrayOutputStream
 
-    ImageIO.write(thumb, "PNG", thumbData)
-    ImageIO.write(shot, "PNG", shotData)
+    ImageIO.write(small, "PNG", smallData)
+    ImageIO.write(norm, "PNG", normData)
 
-    p.thumbnail(thumbData.toByteArray)
-    p.screenshot(shotData.toByteArray)
+    p.smallicon(smallData.toByteArray)
+    p.icon(normData.toByteArray)
   }
 
   /** The sort statement for the current list session */
@@ -250,7 +250,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   import Package._
 
   def entries: List[Entry[Package]] =
-    List(screenshot, thumbnail, title, name, category, version, description, owner, updatedOn, pndFile)
+    List(icon, smallicon, title, name, category, version, description, owner, updatedOn, pndFile)
     
   def getSingleton = Package
 
@@ -266,7 +266,8 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     val id = "owner"
     override def displayName = S.?("package.owner")
     override def asHtml = Text(User.findByKey(is).map(_.niceName) openOr S.?("package.owner.unknown"))
-    def asXML = <owner>{User.findByKey(is).map(_.openId) openOr S.?("package.owner.unknown")}</owner>
+
+    def asXML = <owner>{User.findByKey(is).map(_.openId.is) openOr S.?("package.owner.unknown")}</owner>
   }
 
   /** The time at which the package was last updated. Almost always is the creation date */
@@ -405,11 +406,11 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     }
   }
 
-  /** A thumbnail image for this package */
-  object thumbnail extends MappedBinary(this) with Visible[Package] {
-    val id = "thumbnail"
+  /** A small icon image for this package */
+  object smallicon extends MappedBinary(this) with Visible[Package] {
+    val id = "smallicon"
 
-    override def displayHtml = Text(S.?("package.thumbnail"))
+    override def displayHtml = Text(S.?("package.smallicon"))
 
     def isVisibleIn(app: Appearance.Value) = app match {
       case Appearance.RichSummary => true
@@ -418,28 +419,28 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
     def isEmpty = is == null || is.length == 0
     
-    override def asHtml = <div class="thumbnail" style=" width: 100px; height: 75px;" alt="thumbnail"> {
+    override def asHtml = <div class="smallicon" style=" width: 32px; height: 32px;"> {
         if(isEmpty)
-          <em class="nothumbnail" style="text-align: center;">(No thumbnail)</em>
+          <em class="noicon">({S.?("package.smallicon.empty")})</em>
         else
-          <img src={S.hostAndPath + "/thumbnail/" + urlFriendlyPrimaryKey(Package.this) + ".png"}/>
+          <img src={S.hostAndPath + "/smallicon/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="smallicon"/>
       }</div>
   }
 
   /** A screenshot of this package's contents */
-  object screenshot extends MappedBinary(this) with ShowInDetail[Package] with APIExposed[Package] {
-    val id = "screenshot"
+  object icon extends MappedBinary(this) with ShowInDetail[Package] with APIExposed[Package] {
+    val id = "icon"
 
-    override def displayHtml = Text(S.?("package.screenshot"))
+    override def displayHtml = Text(S.?("package.icon"))
 
     def isEmpty = is == null || is.length == 0
 
-    override def asHtml = <div class="screenshot" style="width: 200px; height: 150px;"> {
+    override def asHtml = <div class="icon" style="width: 64px; height: 64px;"> {
       if(isEmpty)
-        <em class="noscreenshot">(No screenshot)</em>
+        <em class="noicon">({S.?("package.icon.empty")})</em>
       else
-        <img src={S.hostAndPath + "/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="screenshot"/>
+        <img src={S.hostAndPath + "/icon/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="icon"/>
     }</div>
-    def asXML = <screenshot>{S.hostAndPath + "/screenshot/" + urlFriendlyPrimaryKey(Package.this) + ".png"}</screenshot>
+    def asXML = <screenshot>{S.hostAndPath + "/icon/" + urlFriendlyPrimaryKey(Package.this) + ".png"}</screenshot>
   }
 }

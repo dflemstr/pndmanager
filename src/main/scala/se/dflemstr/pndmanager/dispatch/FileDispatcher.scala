@@ -35,10 +35,10 @@ object FileDispatcher {
     //The following suffix hack is required because Lift likes to mess with me
     case Req("package" :: name :: Nil, suffix, GetRequest) =>
       () => pndFile(name + (if(suffix != null && suffix != "") "." + suffix else ""))
-    case Req("screenshot" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined =>
-      () => screenshot(id)
-    case Req("thumbnail" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined =>
-      () => thumbnail(id)
+    case Req("icon" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined =>
+      () => icon(id)
+    case Req("smallicon" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined =>
+      () => smallicon(id)
   }
 
   protected def makeVersion(strings: List[String]) = {
@@ -49,15 +49,15 @@ object FileDispatcher {
     (ver(0), ver(1), ver(2), ver(3))
   }
 
-  private def screenshot(id: String): Box[LiftResponse] = {
+  private def icon(id: String): Box[LiftResponse] = {
     val thePackage = Package.find(id).open_!
-    Full(InMemoryResponse(thePackage.screenshot,
+    Full(InMemoryResponse(thePackage.icon,
                           ("Content-Type" -> "image/png") :: cacheHeaders, Nil, 200))
   }
 
-  private def thumbnail(id: String): Box[LiftResponse] = {
+  private def smallicon(id: String): Box[LiftResponse] = {
     val thePackage = Package.find(id).open_!
-    Full(InMemoryResponse(thePackage.thumbnail, 
+    Full(InMemoryResponse(thePackage.smallicon,
                           ("Content-Type" -> "image/png") :: cacheHeaders, Nil, 200))
   }
 

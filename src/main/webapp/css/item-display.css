@@ -100,13 +100,13 @@
 /* The "Rich" display mode */
 
 /*Headers*/
-#thumbnail-header {
+#smallicon-header {
     padding: 5px;
-    width: 110px;
+    width: 42px;
 }
 
-#thumbnail-header div {
-    width: 100px;
+#smallicon-header div {
+    width: 32px;
     height: 3em;
     text-align: center;
     line-height: 3em;
