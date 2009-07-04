@@ -56,7 +56,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
   override def deleteSubmitButton = S.?("package.delete.deletebutton")
 
   override lazy val digestAccessNode = "repository"
-  override lazy val elementAccessNode = "package"
+  override lazy val elementAccessNode = "packages"
   override def createTag(in: NodeSeq): Elem = <pndmanager-api>{in}</pndmanager-api>
   override def createItem(in: NodeSeq, detailsLink: Boolean, item: Package): Elem = <package>{
     in ++ (
