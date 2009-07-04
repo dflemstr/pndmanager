@@ -70,6 +70,9 @@
                                 </list:header_version>
                             </th>
                             <th>
+                                <list:header_downloadcount>
+                                    <div header:class=""><header:name/></div>
+                                </list:header_downloadcount>
                                 <list:header_pnd>
                                     <div header:class=""><header:name/></div>
                                 </list:header_pnd>
@@ -98,9 +101,14 @@
                                             - <entry:value/>)
                                         </row:entry_version>
                                     </div>
-                                    <row:entry_category>
-                                        <div class="quiet"><entry:value/></div>
-                                    </row:entry_category>
+                                    <div class="quiet">
+                                        <row:entry_category>
+                                            <entry:value/>
+                                        </row:entry_category>,
+                                        <row:entry_downloadcount>
+                                            <entry:value/> <lift:loc>package.downloadcount.unit</lift:loc>
+                                        </row:entry_downloadcount>
+                                    </div>
                                 </td>
                                 <td>
                                     <row:entry_pnd>

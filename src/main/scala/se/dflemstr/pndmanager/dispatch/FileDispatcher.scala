@@ -62,19 +62,20 @@ object FileDispatcher {
   }
 
   def pndFile(id: String): Box[LiftResponse] = {
-    Log.info("A file is being downloaded: " + id) //don't translate!
     val masterRegex = "^" + PXML.idRegex + """-(\d+\.){3}\d+\.pnd$"""
     
     if(id matches masterRegex) {
+      Log.info("A file is being downloaded: " + id) //don't translate!
       val nameParts = id.split("-")
       val versionString = (nameParts.last take (nameParts.last.length - 4)).toString
-      val actualName = (nameParts take (nameParts.length - 1)).mkString("")
+      val actualName = (nameParts take (nameParts.length - 1)).mkString("-")
       val version = makeVersion(versionString.split('.').toList)
 
       Package.find(
           By(Package.name, actualName),
           By(Package.version, Package.version.valueFromTuple(version))) match {
         case Full(p) =>
+          p.downloadCount(p.downloadCount.is + 1).save
           Full(InMemoryResponse(p.pndFile,
                                 ("Content-Type" -> "application/x-pandora-pnd") :: cacheHeaders, Nil, 200))
         case _ => Empty

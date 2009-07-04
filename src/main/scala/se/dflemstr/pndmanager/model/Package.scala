@@ -215,7 +215,9 @@ object Package extends Package with LongKeyedMetaMapper[Package]
         p.owner(User.currentUser)
 
         p.updatedOn(new Date())
-        
+
+        p.downloadCount(0)
+
         p.valid(true)
 
         p.save //just so that we get an ID; neccessary for associating localized strings
@@ -250,7 +252,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   import Package._
 
   def entries: List[Entry[Package]] =
-    List(icon, smallicon, title, name, category, version, description, owner, updatedOn, pndFile)
+    List(icon, smallicon, title, name, category, version, description, owner, updatedOn, downloadCount, pndFile)
     
   def getSingleton = Package
 
@@ -445,5 +447,14 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
         <img src={S.hostAndPath + "/icon/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="icon"/>
     }</div>
     def asXML = <icon href={S.hostAndPath + "/icon/" + urlFriendlyPrimaryKey(Package.this) + ".png"}/>
+  }
+
+  object downloadCount extends MappedInt(this) with ShowInRichSummary[Package] 
+      with Sortable[Int, Package] with APIExposed[Package] {
+    val id = "downloadcount"
+
+    override def displayHtml = Text(S.?("package.downloadcount"))
+
+    def asXML = <downloads count={is.toString}/>
   }
 }
