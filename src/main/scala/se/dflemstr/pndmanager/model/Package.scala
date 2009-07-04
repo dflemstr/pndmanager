@@ -61,7 +61,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
   override def createItem(in: NodeSeq, detailsLink: Boolean, item: Package): Elem = <package>{
     in ++ (
       if(detailsLink)
-        <details>{S.hostAndPath + "/api/" + elementAccessNode + "/" + urlFriendlyPrimaryKey(item) + ".xml"}</details>
+        <details href={S.hostAndPath + "/api/" + elementAccessNode + "/" + urlFriendlyPrimaryKey(item) + ".xml"}/>
       else
         Nil
     )
@@ -267,7 +267,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     override def displayName = S.?("package.owner")
     override def asHtml = Text(User.findByKey(is).map(_.niceName) openOr S.?("package.owner.unknown"))
 
-    def asXML = <owner>{User.findByKey(is).map(_.openId.is) openOr S.?("package.owner.unknown")}</owner>
+    def asXML = <owner name={User.findByKey(is).map(_.openId.is) openOr S.?("package.owner.unknown")}/>
   }
 
   /** The time at which the package was last updated. Almost always is the creation date */
@@ -276,7 +276,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
     override def displayName = S.?("package.updated")
     override def validations = super.validations ::: List(notInFuture(this) _)
     override def asHtml = dateAsHtml(is)
-    def asXML = <updatedon>{is.getTime / 1000}</updatedon>
+    def asXML = <updatedon time={(is.getTime / 1000).toString}/>
   }
 
   /** The actual PND file that provides all the data needed for this package */
@@ -304,11 +304,11 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
       
     override def asHtml = <a href={downloadLoc.createLink(NullLocParams)} class="downloadlink">{downloadLoc.linkText openOr S.?("package.download")}</a>
 
-    def asXML = <pndfile>{downloadLoc.createLink(NullLocParams) match {
+    def asXML = <pndfile href={downloadLoc.createLink(NullLocParams) match {
           case Some(x) => S.hostAndPath + x
           case _ => null
         }
-      }</pndfile>
+      }/>
   }
 
   /** The name of the package */
@@ -320,7 +320,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
     override def dbIndexed_? = true
     
-    def asXML = <name>{is}</name>
+    def asXML = <identifier name={is}/>
   }
 
   /** The category of the package. Has nothing to do with the menu category provided by PXML files */
@@ -335,7 +335,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
     override def validSelectValues = Full(Category.findAll.map(c => (c.id, c.name.asHtml.text)))
 
-    def asXML = <category>{Category.find(is).map(_.name.is) openOr unknown}</category>
+    def asXML = <category name={Category.find(is).map(_.name.is) openOr unknown}/>
   }
 
   /** The package version */
@@ -375,7 +375,10 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
     override def asHtml = Text(toHumanReadable)
 
-    def asXML = <version>{is}</version>
+    def asXML = {
+      val ver = toTuple
+      <version major={ver._1.toString} minor={ver._2.toString} revision={ver._3.toString} build={ver._4.toString}/>
+    }
   }
 
   /** Specifies if this package is valid or not. Almost unused. */
@@ -441,6 +444,6 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
       else
         <img src={S.hostAndPath + "/icon/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="icon"/>
     }</div>
-    def asXML = <screenshot>{S.hostAndPath + "/icon/" + urlFriendlyPrimaryKey(Package.this) + ".png"}</screenshot>
+    def asXML = <icon href={S.hostAndPath + "/icon/" + urlFriendlyPrimaryKey(Package.this) + ".png"}/>
   }
 }
