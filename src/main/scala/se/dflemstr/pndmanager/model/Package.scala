@@ -57,11 +57,13 @@ object Package extends Package with LongKeyedMetaMapper[Package]
 
   override lazy val digestAccessNode = "repository"
   override lazy val elementAccessNode = "packages"
+  override lazy val apiNode = "meta"
   override def createTag(in: NodeSeq): Elem = <pndmanager-api>{in}</pndmanager-api>
   override def createItem(in: NodeSeq, detailsLink: Boolean, item: Package): Elem = <package>{
     in ++ (
       if(detailsLink)
-        <details href={S.hostAndPath + "/api/" + elementAccessNode + "/" + urlFriendlyPrimaryKey(item) + ".xml"}/>
+        <details href={S.hostAndPath + "/" + apiNode +
+                       "/" + elementAccessNode + "/" + urlFriendlyPrimaryKey(item) + ".xml"}/>
       else
         Nil
     )
@@ -245,6 +247,8 @@ object Package extends Package with LongKeyedMetaMapper[Package]
       }
     case error => error //if the PND itself was erroneous, then step out instantly
   }
+
+  override def deletionProcess(pkg: Package) = PackageNotificationDispatcher ! PackageRemovalNotification(pkg)
 }
 
 class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package] 
@@ -259,8 +263,10 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   def downloadLinkText = S.?("package.download")
 
   def downloadLoc = Loc("package-" + name.is + "-" + version.is,
-                        new Loc.Link(List("package", name.is + "-" + version.toHumanReadable + ".pnd"), false),
+                        new Loc.Link(List("package", fileName), false),
                         new Loc.LinkText(_ => Text(downloadLinkText)))
+
+  def fileName = name.is + "-" + version.toHumanReadable + ".pnd"
 
   /** The user that created the package, and has delete rights on it */
   object owner extends MappedLongForeignKey(this, User)

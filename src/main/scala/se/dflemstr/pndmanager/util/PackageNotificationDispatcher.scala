@@ -9,6 +9,7 @@ sealed trait NotificationMessage
 case class AddNotificationListener(listener: Actor) extends NotificationMessage
 case class RemoveNotificationListener(listener: Actor) extends NotificationMessage
 case class NewPackageNotification(thePackage: Package) extends NotificationMessage
+case class PackageRemovalNotification(thePackage: Package) extends NotificationMessage
 
 //TODO: actually write Comet things for this
 
@@ -22,6 +23,8 @@ object PackageNotificationDispatcher extends Actor {
         case RemoveNotificationListener(l) => listeners -= l
         case n: NewPackageNotification => //This gets sent from the Package object
           listeners.foreach(_ ! n) //Forward it to all the listeners
+        case r: PackageRemovalNotification => //This also gets sent from the Package object
+          listeners.foreach(_ ! r) //Forward it to all the listeners
       }
     }
   }

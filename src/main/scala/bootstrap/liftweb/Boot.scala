@@ -111,6 +111,14 @@ class Boot {
 
     //Init Flot
     CustomFlot.init()
+
+    PackageNotificationDispatcher.start()
+
+    Props.get("pndmanager.repoclonepath") match {
+      case Full(clonepath) =>
+        new RepositoryCloner(clonepath).start()
+      case _ =>
+    }
   }
 
   def setHooks() = {

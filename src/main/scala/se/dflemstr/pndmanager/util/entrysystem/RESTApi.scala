@@ -27,10 +27,10 @@ trait RESTApi[T, M <: EntryProvider[T, M]] extends EntryCRD[T, M] with XMLApiHel
   def createItem(in: NodeSeq, detailsLink: Boolean, item: M): Elem = <item>{
     in ++ (
       if(detailsLink)
-        <details>{S + "/api/" + elementAccessNode + "/" + urlFriendlyPrimaryKey(item) + ".xml"}</details>
+        <details>{S + "/" + apiNode + "/" + elementAccessNode + "/" + urlFriendlyPrimaryKey(item) + ".xml"}</details>
       else
         Nil
-      )
+    )
   }</item>
 
   lazy val apiNode = "api"
@@ -48,7 +48,7 @@ trait RESTApi[T, M <: EntryProvider[T, M]] extends EntryCRD[T, M] with XMLApiHel
     case Req(List(`apiNode`, `elementAccessNode`, id), "xml", GetRequest) =>
       () => showItem(id)
     case Req(List(`apiNode`, `digestAccessNode`), "xml", GetRequest) =>
-      createDigest _
+      makeDigestResponse _
   }
 
   def showItem(item: String): LiftResponse = {
@@ -58,7 +58,10 @@ trait RESTApi[T, M <: EntryProvider[T, M]] extends EntryCRD[T, M] with XMLApiHel
     e
   }
 
-  def createDigest: LiftResponse = {
+  def makeDigestResponse: LiftResponse =
+    nodeSeqToResponse(createDigest)
+
+  def createDigest: NodeSeq = {
     def actuallyCreateDigest() = {
       if(contentHasChanged == Some(true))
         contentHasChanged = Some(false)
@@ -69,7 +72,7 @@ trait RESTApi[T, M <: EntryProvider[T, M]] extends EntryCRD[T, M] with XMLApiHel
       ).flatMap(x => x)
     }
     
-    val digest = (contentHasChanged, cachedDigest) match {
+    (contentHasChanged, cachedDigest) match {
       case (_, None) | (Some(true), _) | (None, _) =>
         //If we don't have anything cached, something has changed,
         //or we don't have information about changes, compute new digest
@@ -80,7 +83,6 @@ trait RESTApi[T, M <: EntryProvider[T, M]] extends EntryCRD[T, M] with XMLApiHel
         //Else, if we have cache, use it
         c
     }
-    nodeSeqToResponse(digest)
   }
 
 }
