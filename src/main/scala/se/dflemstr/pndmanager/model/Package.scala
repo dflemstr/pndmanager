@@ -62,8 +62,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
   override def createItem(in: NodeSeq, detailsLink: Boolean, item: Package): Elem = <package>{
     in ++ (
       if(detailsLink)
-        <details href={S.hostAndPath + "/" + apiNode +
-                       "/" + elementAccessNode + "/" + urlFriendlyPrimaryKey(item) + ".xml"}/>
+        <details href={"/" + apiNode + "/" + elementAccessNode + "/" + urlFriendlyPrimaryKey(item) + ".xml"}/>
       else
         Nil
     )
@@ -105,7 +104,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
           FirstItemIndex(0)
           redraw()
         case s =>
-          FilterCategory(Some(try {Category.find(s.toInt) openOr null} catch {case _ => null}))
+          FilterCategory(try {Category.find(s.toInt).map(Some(_)) openOr None} catch {case _ => None})
           FirstItemIndex(0)
           redraw()
       }})) ::
@@ -312,11 +311,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
       
     override def asHtml = <a href={downloadLoc.createLink(NullLocParams)} class="downloadlink">{downloadLoc.linkText openOr S.?("package.download")}</a>
 
-    def asXML = <pndfile href={downloadLoc.createLink(NullLocParams) match {
-          case Some(x) => S.hostAndPath + x
-          case _ => null
-        }
-      }/>
+    def asXML = <pndfile href={downloadLoc.createLink(NullLocParams)}/>
   }
 
   /** The name of the package */
@@ -434,7 +429,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
         if(isEmpty)
           <em class="noicon">({S.?("package.smallicon.empty")})</em>
         else
-          <img src={S.hostAndPath + "/smallicon/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="smallicon"/>
+          <img src={"/smallicon/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="smallicon"/>
       }</div>
   }
 
@@ -452,7 +447,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
       else
         <img src={S.hostAndPath + "/icon/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="icon"/>
     }</div>
-    def asXML = <icon href={S.hostAndPath + "/icon/" + urlFriendlyPrimaryKey(Package.this) + ".png"}/>
+    def asXML = <icon href={"/icon/" + urlFriendlyPrimaryKey(Package.this) + ".png"}/>
   }
 
   object downloadCount extends MappedInt(this) with ShowInRichSummary[Package] 

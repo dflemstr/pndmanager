@@ -27,7 +27,7 @@ trait RESTApi[T, M <: EntryProvider[T, M]] extends EntryCRD[T, M] with XMLApiHel
   def createItem(in: NodeSeq, detailsLink: Boolean, item: M): Elem = <item>{
     in ++ (
       if(detailsLink)
-        <details>{S + "/" + apiNode + "/" + elementAccessNode + "/" + urlFriendlyPrimaryKey(item) + ".xml"}</details>
+        <details>{"/" + apiNode + "/" + elementAccessNode + "/" + urlFriendlyPrimaryKey(item) + ".xml"}</details>
       else
         Nil
     )
