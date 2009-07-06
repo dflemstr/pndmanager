@@ -33,11 +33,11 @@ object FileDispatcher {
 
   val dispatcher: PartialFunction[Req, () => Box[LiftResponse]] = {
     //The following suffix hack is required because Lift likes to mess with me
-    case Req("package" :: name :: Nil, suffix, GetRequest) =>
+    case Req("pnds" :: name :: Nil, suffix, GetRequest) =>
       () => pndFile(name + (if(suffix != null && suffix != "") "." + suffix else ""))
-    case Req("icon" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined =>
+    case Req("icons" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined =>
       () => icon(id)
-    case Req("smallicon" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined =>
+    case Req("smallicons" :: id :: Nil, "png", GetRequest) if Package.find(id).isDefined =>
       () => smallicon(id)
   }
 

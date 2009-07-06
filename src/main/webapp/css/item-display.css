@@ -9,11 +9,11 @@
 }
 
 .nothumbnail {
-    line-height: 75px;
+    line-height: 64px;
 }
 
 .noscreenshot {
-    line-height: 150px;
+    line-height: 128px;
 }
 
 .buttoncontainer {
@@ -102,12 +102,12 @@
 /*Headers*/
 #smallicon-header {
     padding: 5px;
-    width: 42px;
+    width: 74px; /*div.width + padding * 2*/
 }
 
 #smallicon-header div {
-    width: 32px;
-    height: 32px;
+    width: 64px;
+    height: 3em;
     text-align: center;
     line-height: 3em;
     background-color: white;

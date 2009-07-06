@@ -25,11 +25,11 @@ case class RepositoryCloner(path: String) extends Actor {
       if(newDir.mkdir)
         newDir
       else
-        error("Unable to access the packages directory for the repo clone and were unable to create it")
+        error("Unable to access the packages directory for the repo clone and unable to create it")
   }
 
   def updateRepoMetadata() = {
-    //TODO: actually implement this
+    
   }
 
   def act = {

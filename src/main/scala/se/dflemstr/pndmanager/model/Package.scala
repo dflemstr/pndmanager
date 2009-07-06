@@ -58,7 +58,7 @@ object Package extends Package with LongKeyedMetaMapper[Package]
   override lazy val digestAccessNode = "repository"
   override lazy val elementAccessNode = "packages"
   override lazy val apiNode = "meta"
-  override def createTag(in: NodeSeq): Elem = <pndmanager-api>{in}</pndmanager-api>
+  override def createTag(in: NodeSeq): Elem = <pndrepository>{in}</pndrepository>
   override def createItem(in: NodeSeq, detailsLink: Boolean, item: Package): Elem = <package>{
     in ++ (
       if(detailsLink)
@@ -148,8 +148,8 @@ object Package extends Package with LongKeyedMetaMapper[Package]
 
   /** Rebuild the image set for the specified package */
   private def updateImages(p: Package, image: BufferedImage) = {
-    val small = createResizedCopy(image, (32, 32))
-    val norm = createResizedCopy(image, (64, 64))
+    val small = createResizedCopy(image, (64, 64))
+    val norm = createResizedCopy(image, (128, 128))
 
     val smallData = new ByteArrayOutputStream
     val normData = new ByteArrayOutputStream
@@ -262,7 +262,7 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
   def downloadLinkText = S.?("package.download")
 
   def downloadLoc = Loc("package-" + name.is + "-" + version.is,
-                        new Loc.Link(List("package", fileName), false),
+                        new Loc.Link(List("pnds", fileName), false),
                         new Loc.LinkText(_ => Text(downloadLinkText)))
 
   def fileName = name.is + "-" + version.toHumanReadable + ".pnd"
@@ -425,11 +425,11 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
     def isEmpty = is == null || is.length == 0
     
-    override def asHtml = <div class="smallicon" style=" width: 32px; height: 32px;"> {
+    override def asHtml = <div class="smallicon" style=" width: 64px; height: 64px;"> {
         if(isEmpty)
           <em class="noicon">({S.?("package.smallicon.empty")})</em>
         else
-          <img src={"/smallicon/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="smallicon"/>
+          <img src={"/smallicons/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="smallicon"/>
       }</div>
   }
 
@@ -441,13 +441,13 @@ class Package extends LongKeyedMapper[Package] with EntryProvider[Long, Package]
 
     def isEmpty = is == null || is.length == 0
 
-    override def asHtml = <div class="icon" style="width: 64px; height: 64px;"> {
+    override def asHtml = <div class="icon" style="width: 128px; height: 128px;"> {
       if(isEmpty)
         <em class="noicon">({S.?("package.icon.empty")})</em>
       else
-        <img src={S.hostAndPath + "/icon/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="icon"/>
+        <img src={S.hostAndPath + "/icons/" + urlFriendlyPrimaryKey(Package.this) + ".png"} alt="icon"/>
     }</div>
-    def asXML = <icon href={"/icon/" + urlFriendlyPrimaryKey(Package.this) + ".png"}/>
+    def asXML = <icon href={"/icons/" + urlFriendlyPrimaryKey(Package.this) + ".png"}/>
   }
 
   object downloadCount extends MappedInt(this) with ShowInRichSummary[Package] 
